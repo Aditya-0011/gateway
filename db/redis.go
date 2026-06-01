@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"gateway/schema"
@@ -9,7 +11,6 @@ import (
 	"time"
 
 	fiberRedisStorage "github.com/gofiber/storage/redis/v3"
-	"github.com/google/uuid"
 	driver "github.com/redis/go-redis/v9"
 	"github.com/redis/go-redis/v9/maintnotifications"
 )
@@ -97,17 +98,24 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 	}, nil
 }
 
+func generateSessionKey() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
+}
+
 func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail string) (string, error) {
 	ctx, cancel := context.WithTimeout(c, timeoutDuration)
 	defer cancel()
 
 	mappingKey := fmt.Sprintf("active:%s", userEmail)
 
-	sessionId, err := uuid.NewV7()
+	sessionKey, err := generateSessionKey()
 	if err != nil {
 		return "", err
 	}
-	sessionKey := sessionId.String()
 
 	tokenData := schema.Token{
 		Id:    userId,

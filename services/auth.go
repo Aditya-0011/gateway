@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 	"gateway/db"
-	"gateway/grpc/calls"
+	calls "gateway/grpc/calls/auth"
 	"gateway/middlewares"
 
 	"buf.build/go/protovalidate"
@@ -22,12 +22,12 @@ func authService(router fiber.Router, redis *db.RedisParams, client auth.AuthSer
 
 	api := router.Group("/")
 	{
-		api.Post("/login", call.Login)
+		api.Post("/login", middlewares.Validate[auth.LoginRequest](validator), call.Login)
 
 		authenticated := api.Group("/", middlewares.Authenticate(redis, client), middlewares.RequireSession())
 		{
-			authenticated.Get("/key", middlewares.Validate[auth.KeyRequest](validator), call.GetKey)
-			authenticated.Post("/rotate-key", middlewares.Validate[auth.KeyRequest](validator), call.RotateKey)
+			authenticated.Get("/key", call.GetKey)
+			authenticated.Post("/rotate-key", call.RotateKey)
 			authenticated.Post("/logout", call.Logout)
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gateway/db"
-	"gateway/utils"
+	rpc "gateway/grpc/calls"
 	"log/slog"
 	"os"
 
@@ -12,8 +12,6 @@ import (
 	"github.com/Aditya-0011/common/contracts/go/auth"
 	"github.com/Aditya-0011/common/contracts/go/manager"
 	"github.com/gofiber/fiber/v3"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type AuthCallsParams struct {
@@ -33,20 +31,11 @@ func AuthCalls(redis *db.RedisParams, client auth.AuthServiceClient, validator p
 func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 	req := c.Locals("req").(*auth.LoginRequest)
 
-	ctx, cancel := context.WithTimeout(c, utils.TimeoutDuration)
-	defer cancel()
-
-	res, err := ac.client.Login(ctx, req)
-
+	res, err := rpc.Call(c, func(ctx context.Context) (*auth.LoginResponse, error) {
+		return ac.client.Login(ctx, req)
+	})
 	if err != nil {
-		st, ok := status.FromError(err)
-		if ok {
-			if st.Code() == codes.Unauthenticated {
-				return fiber.NewError(fiber.StatusUnauthorized, st.Message())
-			}
-			return fiber.NewError(fiber.StatusInternalServerError, st.Message())
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+		return err
 	}
 
 	sessionKey, err := ac.redis.CreateSession(c.Context(), int(res.GetUserId()), res.GetUserEmail())
@@ -69,45 +58,27 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 }
 
 func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {
-	req := c.Locals("req").(*auth.KeyRequest)
+	userId := c.Locals("userId").(int)
 
-	ctx, cancel := context.WithTimeout(c, utils.TimeoutDuration)
-	defer cancel()
-
-	res, err := ac.client.GetKey(ctx, req)
-	if err != nil {
-		st, ok := status.FromError(err)
-		if ok {
-			if st.Code() == codes.NotFound {
-				return fiber.NewError(fiber.StatusNotFound, st.Message())
-			}
-			return fiber.NewError(fiber.StatusInternalServerError, st.Message())
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	req := &auth.KeyRequest{
+		UserId: int32(userId),
 	}
 
-	return c.JSON(res)
+	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.GetKeyResponse, error) {
+		return ac.client.GetKey(ctx, req)
+	})
 }
 
 func (ac *AuthCallsParams) RotateKey(c fiber.Ctx) error {
-	req := c.Locals("req").(*auth.KeyRequest)
+	userId := c.Locals("userId").(int)
 
-	ctx, cancel := context.WithTimeout(c, utils.TimeoutDuration)
-	defer cancel()
-
-	res, err := ac.client.RotateKey(ctx, req)
-	if err != nil {
-		st, ok := status.FromError(err)
-		if ok {
-			if st.Code() == codes.NotFound {
-				return fiber.NewError(fiber.StatusNotFound, st.Message())
-			}
-			return fiber.NewError(fiber.StatusInternalServerError, st.Message())
-		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	req := &auth.KeyRequest{
+		UserId: int32(userId),
 	}
 
-	return c.JSON(res)
+	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.RotateKeyResponse, error) {
+		return ac.client.RotateKey(ctx, req)
+	})
 }
 
 func (ac *AuthCallsParams) Logout(c fiber.Ctx) error {
