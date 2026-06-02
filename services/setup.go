@@ -27,8 +27,9 @@ func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams)
 	authGroup := app.Group("")
 	authService(authGroup, redis, clients.AuthClient)
 
-	managerGroup := app.Group("", middlewares.Authenticate(redis, clients.AuthClient))
-	managerService(managerGroup, clients.ManagerUserClient, clients.ManagerPortfolioClient)
+	authMiddleware := middlewares.Authenticate(redis, clients.AuthClient)
+	managerGroup := app.Group("")
+	managerService(managerGroup, authMiddleware, clients.ManagerUserClient, clients.ManagerPortfolioClient)
 
 	app.Use(notFoundHandler)
 }

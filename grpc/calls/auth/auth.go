@@ -54,7 +54,7 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 		MaxAge:   int(ac.redis.SessionDuration.Seconds()),
 	})
 
-	return c.JSON(res)
+	return c.Status(fiber.StatusOK).SendString("Login Successful")
 }
 
 func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {

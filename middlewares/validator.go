@@ -47,9 +47,9 @@ func Validate[T any, Ptr interface {
 	return func(c fiber.Ctx) error {
 		var msg Ptr = new(T)
 
-		if err := c.Bind().JSON(msg); err != nil {
-			if c.Method() != fiber.MethodGet {
-				return fiber.NewError(fiber.StatusBadRequest, "Invalid request body format")
+		if len(c.Body()) > 0 {
+			if err := c.Bind().JSON(msg); err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid request body format")
 			}
 		}
 
@@ -67,10 +67,7 @@ func Validate[T any, Ptr interface {
 		}
 
 		if err := validator.Validate(msg); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error":   "Validation failed",
-				"details": err.Error(),
-			})
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
 
 		c.Locals("req", msg)

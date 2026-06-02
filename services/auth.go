@@ -20,16 +20,10 @@ func authService(router fiber.Router, redis *db.RedisParams, client auth.AuthSer
 
 	call := calls.AuthCalls(redis, client, validator)
 
-	api := router.Group("/")
-	{
-		api.Post("/login", middlewares.Validate[auth.LoginRequest](validator), call.Login)
+	router.Post("/login", middlewares.Validate[auth.LoginRequest](validator), call.Login)
 
-		authenticated := api.Group("/", middlewares.RequireSession(), middlewares.Authenticate(redis, client))
-		{
-			authenticated.Get("/key", call.GetKey)
-			authenticated.Post("/rotate-key", call.RotateKey)
-			authenticated.Post("/logout", call.Logout)
-		}
-	}
+	router.Get("/key", middlewares.Authenticate(redis, client), middlewares.RequireSession(), middlewares.Validate[auth.KeyRequest](validator), call.GetKey)
+	router.Post("/rotate-key", middlewares.Authenticate(redis, client), middlewares.RequireSession(), middlewares.Validate[auth.KeyRequest](validator), call.RotateKey)
+	router.Post("/logout", middlewares.Authenticate(redis, client), middlewares.RequireSession(), call.Logout)
 
 }

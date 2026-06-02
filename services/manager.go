@@ -10,7 +10,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func managerService(router fiber.Router, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient) {
+func managerService(router fiber.Router, authMiddleware fiber.Handler, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient) {
 	validator, err := protovalidate.New()
 
 	if err != nil {
@@ -20,43 +20,40 @@ func managerService(router fiber.Router, userClient manager.UserServiceClient, p
 	userCalls := calls.PortfolioUserCalls(userClient, validator)
 	portfolioCalls := calls.PortfolioCalls(portfolioClient, validator)
 
-	api := router.Group("/portfolio")
+	userApi := router.Group("/user", authMiddleware)
 	{
-		api.Group("/user")
-		{
-			api.Get("/details", middlewares.Validate[manager.SimpleRequest](validator), userCalls.GetUserDetails)
-			api.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.EditUserDetailsRequest](validator), userCalls.EditUserDetails)
-		}
+		userApi.Get("/details", middlewares.Validate[manager.SimpleRequest](validator), userCalls.GetUserDetails)
+		userApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.EditUserDetailsRequest](validator), userCalls.EditUserDetails)
+	}
 
-		api.Group("/message")
-		{
-			api.Get("/list", portfolioCalls.GetMessages)
-			api.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.AddMessageRequest](validator), portfolioCalls.AddMessage)
-			api.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCalls.DeleteMessage)
-		}
+	messageApi := router.Group("/message", authMiddleware)
+	{
+		messageApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCalls.GetMessages)
+		messageApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.AddMessageRequest](validator), portfolioCalls.AddMessage)
+		messageApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCalls.DeleteMessage)
+	}
 
-		api.Group("/technology")
-		{
-			api.Get("/list", portfolioCalls.GetTechnologies)
-			api.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyCreateRequest](validator), portfolioCalls.CreateTechnology)
-			api.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyUpdateRequest](validator), portfolioCalls.UpdateTechnology)
-			api.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteTechnology)
-		}
+	technologyApi := router.Group("/technology", authMiddleware)
+	{
+		technologyApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCalls.GetTechnologies)
+		technologyApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyCreateRequest](validator), portfolioCalls.CreateTechnology)
+		technologyApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyUpdateRequest](validator), portfolioCalls.UpdateTechnology)
+		technologyApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteTechnology)
+	}
 
-		api.Group("/project")
-		{
-			api.Get("/list", portfolioCalls.GetProjects)
-			api.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ProjectCreateRequest](validator), portfolioCalls.CreateProject)
-			api.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ProjectUpdateRequest](validator), portfolioCalls.UpdateProject)
-			api.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteProject)
-		}
+	projectApi := router.Group("/project", authMiddleware)
+	{
+		projectApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCalls.GetProjects)
+		projectApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ProjectCreateRequest](validator), portfolioCalls.CreateProject)
+		projectApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ProjectUpdateRequest](validator), portfolioCalls.UpdateProject)
+		projectApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteProject)
+	}
 
-		api.Group("/experience")
-		{
-			api.Get("/list", portfolioCalls.GetExperiences)
-			api.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceCreateRequest](validator), portfolioCalls.CreateExperience)
-			api.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceUpdateRequest](validator), portfolioCalls.UpdateExperience)
-			api.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteExperience)
-		}
+	experienceApi := router.Group("/experience", authMiddleware)
+	{
+		experienceApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCalls.GetExperiences)
+		experienceApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceCreateRequest](validator), portfolioCalls.CreateExperience)
+		experienceApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceUpdateRequest](validator), portfolioCalls.UpdateExperience)
+		experienceApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCalls.DeleteExperience)
 	}
 }
