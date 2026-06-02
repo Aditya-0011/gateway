@@ -2,11 +2,10 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"gateway/schema"
+	"gateway/utils"
 	"log/slog"
 	"time"
 
@@ -98,21 +97,13 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 	}, nil
 }
 
-func generateSessionKey() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(bytes), nil
-}
-
 func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail string) (string, error) {
 	ctx, cancel := context.WithTimeout(c, timeoutDuration)
 	defer cancel()
 
 	mappingKey := fmt.Sprintf("active:%s", userEmail)
 
-	sessionKey, err := generateSessionKey()
+	sessionKey, err := utils.GenerateSessionKey()
 	if err != nil {
 		return "", err
 	}
@@ -134,11 +125,9 @@ func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail str
 	return sessionKey, err
 }
 
-func (r *RedisParams) CreateApiSession(c context.Context, apiKey string, userId int, userEmail string) error {
+func (r *RedisParams) CreateApiSession(c context.Context, key string, userId int, userEmail string) error {
 	ctx, cancel := context.WithTimeout(c, timeoutDuration)
 	defer cancel()
-
-	mappingKey := fmt.Sprintf("api:%s", apiKey)
 
 	tokenData := schema.Token{
 		Id:    userId,
@@ -149,7 +138,7 @@ func (r *RedisParams) CreateApiSession(c context.Context, apiKey string, userId 
 		return err
 	}
 
-	err = r.client.Set(ctx, mappingKey, jsonData, sessionDuration).Err()
+	err = r.client.Set(ctx, key, jsonData, sessionDuration).Err()
 	if err != nil {
 		return err
 	}
@@ -187,11 +176,11 @@ func (r *RedisParams) ExtendSession(c context.Context, sessionId, mappingKey str
 	return err
 }
 
-func (r *RedisParams) ExtendApiSession(c context.Context, mappingKey string) error {
+func (r *RedisParams) ExtendApiSession(c context.Context, key string) error {
 	ctx, cancel := context.WithTimeout(c, timeoutDuration)
 	defer cancel()
 
-	return r.client.Expire(ctx, mappingKey, sessionDuration).Err()
+	return r.client.Expire(ctx, key, sessionDuration).Err()
 }
 
 func (r *RedisParams) DeleteSession(c context.Context, sessionId, mappingKey string) error {

@@ -11,9 +11,11 @@ import (
 )
 
 func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams) {
+	isDevEnv := os.Getenv("DEVELOPMENT") == "true"
+	
 	app.Use(func(c fiber.Ctx) error {
 		host := c.Hostname()
-		isDev := os.Getenv("DEVELOPMENT") == "true" && strings.Contains(host, "localhost")
+		isDev := isDevEnv && strings.Contains(host, "localhost")
 
 		if strings.Contains(host, "api.auth.") || strings.Contains(host, "api.manager.") || isDev {
 			return c.Next()

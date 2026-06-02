@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gateway/db"
+	"gateway/utils"
 	"log/slog"
 	"os"
 
@@ -12,6 +13,8 @@ import (
 )
 
 func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fiber.Handler {
+	isDev := os.Getenv("DEVELOPMENT") == "true"
+
 	return func(c fiber.Ctx) error {
 		sessionKey := c.Cookies("session")
 		var apiKey string
@@ -21,11 +24,6 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 			if apiKey == "" {
 				return fiber.ErrUnauthorized
 			}
-		}
-
-		development := os.Getenv("DEVELOPMENT")
-		if development == "" {
-			development = "false"
 		}
 
 		if sessionKey != "" {
@@ -51,7 +49,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 				Name:     "session",
 				Value:    sessionKey,
 				HTTPOnly: true,
-				Secure:   development != "true",
+				Secure:   !isDev,
 				SameSite: "Strict",
 				MaxAge:   int(redis.SessionDuration.Seconds()),
 			})
@@ -61,9 +59,9 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 			c.Locals("authType", "session")
 
 		} else {
-			mappingKey := fmt.Sprintf("api:%s", apiKey)
+			key := fmt.Sprintf("api:%s", utils.HashSHA256(apiKey))
 
-			userData, err := redis.GetSession(c.Context(), mappingKey)
+			userData, err := redis.GetSession(c.Context(), key)
 
 			if err != nil {
 				if err.Error() != "invalid session" {
@@ -78,7 +76,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 					return fiber.NewError(fiber.ErrUnauthorized.Code, "Invalid API Key")
 				}
 
-				err = redis.CreateApiSession(c.Context(), apiKey, int(res.GetUserId()), res.GetUserEmail())
+				err = redis.CreateApiSession(c.Context(), key, int(res.GetUserId()), res.GetUserEmail())
 				if err != nil {
 					slog.Error("Redis Error creating api session", "error", err)
 					return fiber.NewError(fiber.ErrInternalServerError.Code, "Internal server error")
@@ -93,7 +91,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 				c.Locals("authType", "api_key")
 
 				go func() {
-					if err := redis.ExtendApiSession(context.WithoutCancel(c.Context()), mappingKey); err != nil {
+					if err := redis.ExtendApiSession(context.WithoutCancel(c.Context()), key); err != nil {
 						slog.Error("Redis Error extending api session", "error", err)
 					}
 				}()

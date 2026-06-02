@@ -23,6 +23,14 @@ func Call[T any](c fiber.Ctx, action func(context.Context) (T, error)) (T, error
 				return zero, fiber.NewError(fiber.StatusNotFound, st.Message())
 			case codes.Unauthenticated:
 				return zero, fiber.NewError(fiber.StatusUnauthorized, st.Message())
+			case codes.InvalidArgument:
+				return zero, fiber.NewError(fiber.StatusBadRequest, st.Message())
+			case codes.AlreadyExists:
+				return zero, fiber.NewError(fiber.StatusConflict, st.Message())
+			case codes.PermissionDenied:
+				return zero, fiber.NewError(fiber.StatusForbidden, st.Message())
+			case codes.DeadlineExceeded:
+				return zero, fiber.NewError(fiber.StatusGatewayTimeout, st.Message())
 			default:
 				return zero, fiber.NewError(fiber.StatusInternalServerError, st.Message())
 			}
