@@ -48,10 +48,23 @@ func Validate[T any, Ptr interface {
 		var msg Ptr = new(T)
 
 		if err := c.Bind().JSON(msg); err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "Invalid request body format")
+			if c.Method() != fiber.MethodGet {
+				return fiber.NewError(fiber.StatusBadRequest, "Invalid request body format")
+			}
 		}
 
 		trimStrings(msg)
+
+		if userId, ok := c.Locals("userId").(int); ok {
+			m := msg.ProtoReflect()
+			if fd := m.Descriptor().Fields().ByName("user_id"); fd != nil {
+				if fd.Kind() == protoreflect.Int32Kind {
+					m.Set(fd, protoreflect.ValueOfInt32(int32(userId)))
+				} else if fd.Kind() == protoreflect.Int64Kind {
+					m.Set(fd, protoreflect.ValueOfInt64(int64(userId)))
+				}
+			}
+		}
 
 		if err := validator.Validate(msg); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

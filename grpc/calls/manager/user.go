@@ -16,20 +16,15 @@ type PortfolioUserCallsParams struct {
 	validator protovalidate.Validator
 }
 
-func PortfolioUserCalls(redis *db.RedisParams, client manager.UserServiceClient, validator protovalidate.Validator) *PortfolioUserCallsParams {
+func PortfolioUserCalls(client manager.UserServiceClient, validator protovalidate.Validator) *PortfolioUserCallsParams {
 	return &PortfolioUserCallsParams{
-		redis:     redis,
 		client:    client,
 		validator: validator,
 	}
 }
 
 func (p *PortfolioUserCallsParams) GetUserDetails(c fiber.Ctx) error {
-	userId := c.Locals("userId").(int)
-
-	req := &manager.SimpleRequest{
-		UserId: int32(userId),
-	}
+	req := c.Locals("req").(*manager.SimpleRequest)
 
 	return rpc.CallWithJSON(c, func(ctx context.Context) (*manager.GetUserDetailsResponse, error) {
 		return p.client.GetUserDetails(ctx, req)
@@ -37,10 +32,7 @@ func (p *PortfolioUserCallsParams) GetUserDetails(c fiber.Ctx) error {
 }
 
 func (p *PortfolioUserCallsParams) EditUserDetails(c fiber.Ctx) error {
-	userId := c.Locals("userId").(int)
-
 	req := c.Locals("req").(*manager.EditUserDetailsRequest)
-	req.UserId = int32(userId)
 
 	return rpc.CallWithJSON(c, func(ctx context.Context) (*manager.SimpleResponse, error) {
 		return p.client.EditUserDetails(ctx, req)

@@ -58,11 +58,7 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 }
 
 func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {
-	userId := c.Locals("userId").(int)
-
-	req := &auth.KeyRequest{
-		UserId: int32(userId),
-	}
+	req := c.Locals("req").(*auth.KeyRequest)
 
 	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.GetKeyResponse, error) {
 		return ac.client.GetKey(ctx, req)
@@ -70,11 +66,7 @@ func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {
 }
 
 func (ac *AuthCallsParams) RotateKey(c fiber.Ctx) error {
-	userId := c.Locals("userId").(int)
-
-	req := &auth.KeyRequest{
-		UserId: int32(userId),
-	}
+	req := c.Locals("req").(*auth.KeyRequest)
 
 	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.RotateKeyResponse, error) {
 		return ac.client.RotateKey(ctx, req)

@@ -24,7 +24,7 @@ func authService(router fiber.Router, redis *db.RedisParams, client auth.AuthSer
 	{
 		api.Post("/login", middlewares.Validate[auth.LoginRequest](validator), call.Login)
 
-		authenticated := api.Group("/", middlewares.Authenticate(redis, client), middlewares.RequireSession())
+		authenticated := api.Group("/", middlewares.RequireSession(), middlewares.Authenticate(redis, client))
 		{
 			authenticated.Get("/key", call.GetKey)
 			authenticated.Post("/rotate-key", call.RotateKey)
