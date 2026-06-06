@@ -1,4 +1,4 @@
-package services
+package routes
 
 import (
 	"gateway/db"
@@ -12,7 +12,7 @@ import (
 
 func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams) {
 	isDevEnv := os.Getenv("DEVELOPMENT") == "true"
-	
+
 	app.Use(func(c fiber.Ctx) error {
 		host := c.Hostname()
 		isDev := isDevEnv && strings.Contains(host, "localhost")
@@ -25,11 +25,11 @@ func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams)
 	})
 
 	authGroup := app.Group("")
-	authService(authGroup, redis, clients.AuthClient)
+	authRouter(authGroup, redis, clients.AuthClient)
 
 	authMiddleware := middlewares.Authenticate(redis, clients.AuthClient)
 	managerGroup := app.Group("")
-	managerService(managerGroup, authMiddleware, clients.ManagerUserClient, clients.ManagerPortfolioClient)
+	managerRouter(managerGroup, authMiddleware, clients.ManagerUserClient, clients.ManagerPortfolioClient)
 
 	app.Use(notFoundHandler)
 }

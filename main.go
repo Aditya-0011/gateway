@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gateway/db"
 	"gateway/grpc/clients"
-	"gateway/services"
+	"gateway/routes"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -79,7 +79,7 @@ func main() {
 		},
 	}))
 
-	services.Setup(app, database.Redis, serviceClients)
+	routes.Setup(app, database.Redis, serviceClients)
 
 	port := os.Getenv("PORT")
 	if port == "" {
