@@ -10,7 +10,6 @@ import (
 
 	"buf.build/go/protovalidate"
 	"github.com/Aditya-0011/common/contracts/go/auth"
-	"github.com/Aditya-0011/common/contracts/go/manager"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -54,7 +53,9 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 		MaxAge:   int(ac.redis.SessionDuration.Seconds()),
 	})
 
-	return c.Status(fiber.StatusOK).SendString("Login Successful")
+	return c.JSON(&auth.SimpleResponse{
+		Message: "Login successful",
+	})
 }
 
 func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {
@@ -68,7 +69,7 @@ func (ac *AuthCallsParams) GetKey(c fiber.Ctx) error {
 func (ac *AuthCallsParams) RotateKey(c fiber.Ctx) error {
 	req := c.Locals("req").(*auth.KeyRequest)
 
-	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.RotateKeyResponse, error) {
+	return rpc.CallWithJSON(c, func(ctx context.Context) (*auth.SimpleResponse, error) {
 		return ac.client.RotateKey(ctx, req)
 	})
 }
@@ -79,7 +80,7 @@ func (ac *AuthCallsParams) Logout(c fiber.Ctx) error {
 
 	if !ok || email == "" {
 		c.ClearCookie("session")
-		return c.JSON(&manager.SimpleResponse{
+		return c.JSON(&auth.SimpleResponse{
 			Message: "No active session",
 		})
 	}
@@ -91,7 +92,7 @@ func (ac *AuthCallsParams) Logout(c fiber.Ctx) error {
 
 	c.ClearCookie("session")
 
-	return c.JSON(&manager.SimpleResponse{
+	return c.JSON(&auth.SimpleResponse{
 		Message: "Successfully logged out",
 	})
 }
