@@ -28,6 +28,16 @@ func AuthCalls(redis *db.RedisParams, client auth.AuthServiceClient, validator p
 }
 
 func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
+	isDev := os.Getenv("DEVELOPMENT") == "true"
+	domain := os.Getenv("DOMAIN")
+
+	if domain == "" && isDev {
+		domain = ""
+	} else if domain == "" {
+		slog.Error("DOMAIN environment variable is not set")
+		os.Exit(1)
+	}
+
 	req := c.Locals("req").(*auth.LoginRequest)
 
 	res, err := rpc.Call(c, func(ctx context.Context) (*auth.LoginResponse, error) {
@@ -43,12 +53,12 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	development := os.Getenv("DEVELOPMENT")
 	c.Cookie(&fiber.Cookie{
 		Name:     "session",
 		Value:    sessionKey,
+		Domain:   domain,
 		HTTPOnly: true,
-		Secure:   development != "true",
+		Secure:   !isDev,
 		SameSite: "Strict",
 		MaxAge:   int(ac.redis.SessionDuration.Seconds()),
 	})

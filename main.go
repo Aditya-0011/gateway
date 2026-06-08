@@ -55,9 +55,14 @@ func main() {
 		Level: compress.LevelBestSpeed,
 	}))
 
+	isDev := os.Getenv("DEVELOPMENT") == "true"
+
 	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
-	if allowedOrigins == "" {
+	if allowedOrigins == "" && isDev {
 		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+	} else if allowedOrigins == "" {
+		slog.Error("CORS_ALLOWED_ORIGINS environment variable is not set")
+		os.Exit(1)
 	}
 
 	app.Use(cors.New(cors.Config{

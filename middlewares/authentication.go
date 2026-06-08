@@ -14,6 +14,14 @@ import (
 
 func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fiber.Handler {
 	isDev := os.Getenv("DEVELOPMENT") == "true"
+	domain := os.Getenv("DOMAIN")
+
+	if domain == "" && isDev {
+		domain = ""
+	} else if domain == "" {
+		slog.Error("DOMAIN environment variable is not set")
+		os.Exit(1)
+	}
 
 	return func(c fiber.Ctx) error {
 		sessionKey := c.Cookies("session")
@@ -48,6 +56,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 			c.Cookie(&fiber.Cookie{
 				Name:     "session",
 				Value:    sessionKey,
+				Domain:   domain,
 				HTTPOnly: true,
 				Secure:   !isDev,
 				SameSite: "Strict",
