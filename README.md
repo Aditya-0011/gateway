@@ -1,6 +1,6 @@
 # API Gateway Service
 
-A high-performance HTTP gateway written in Go using the Fiber framework.
+A high-performance HTTP perimeter gateway written in Go using the Fiber framework.
 
 [![Go Version](https://img.shields.io/badge/Go->=1.25.3-00add8?style=flat-square&logo=go)](https://golang.org/)
 [![Fiber](https://img.shields.io/badge/Fiber-Framework-244c5a?style=flat-square)](https://gofiber.io/)
@@ -8,7 +8,7 @@ A high-performance HTTP gateway written in Go using the Fiber framework.
 
 ## Overview
 
-The Gateway Service acts as the public-facing entry point for the microservices infrastructure. Built on top of the exceptionally fast Fiber framework, it translates incoming HTTP/REST requests and forwards them to internal gRPC microservices (`auth`, `manager`). It provides a centralized layer for security, compression, CORS, and rate-limiting.
+The Gateway Service acts as the public-facing RESTful perimeter for the developer platform. Built on top of the exceptionally fast Fiber framework, its primary purpose is to aggregate and translate incoming HTTP/REST requests from the frontend UIs and forward them to the tightly-coupled internal gRPC microservices (`auth`, `manager`). It provides a centralized layer for security, CORS handling, and sliding-window rate-limiting so the internal services remain purely focused on business logic.
 
 ## Architecture & Tech Stack
 
@@ -36,18 +36,18 @@ The Gateway Service acts as the public-facing entry point for the microservices 
 
 - ⚡ **High-Performance Routing**: Exposes a lightning-fast HTTP API built on top of Fiber.
 - 🚦 **Rate Limiting**: Sliding-window rate limiter backed by Redis to prevent abuse.
-- 🛡️ **Robust Security Middlewares**: Built-in HTTP security headers (Helmet), payload compression, and strict CORS policies.
-- 🔐 **Authentication & Authorization**: JWT/Token validation and request authorization before forwarding to internal services.
+- 🛡️ **Robust Security Middlewares**: Built-in HTTP security headers (Helmet), payload compression, and strict CORS policies tailored for the specific UI domains.
+- 🔐 **Perimeter Security**: Secure cookie-based sessions (backed by Redis) and API key validation middleware that authorizes requests before forwarding them to the internal network.
 - ✅ **Request Validation**: Custom validation middleware to reject malformed REST payloads early.
 - 🔄 **gRPC Proxying**: Seamlessly translates REST payloads to tightly-coupled internal gRPC contracts.
 - 🚦 **Graceful Shutdown**: Safely drains active HTTP requests and closes gRPC client connections upon OS interrupts.
 
 ## API Summary
 
-The gateway implements a unified REST interface that orchestrates interactions across all internal microservices:
+The gateway implements a unified REST interface that orchestrates interactions for the platform:
 - **Auth Routes**: Login, registration, and API key management endpoints (proxied to `auth`).
-- **Portfolio Routes**: Endpoints for managing user profiles, experiences, projects, and technologies (proxied to `manager`).
-- **Public vs Protected**: Segregates public read endpoints from secured write endpoints using authentication middlewares.
+- **Portfolio Routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies (proxied to `manager`).
+- **Public vs Protected**: Segregates public read endpoints (used by the public portfolio) from secured write endpoints (used by the admin console).
 
 ## Getting Started
 
@@ -56,7 +56,6 @@ The gateway implements a unified REST interface that orchestrates interactions a
 - [Go](https://golang.org/dl/) 1.25.3 or higher
 - A running [Redis](https://redis.io/download/) server (for rate limiting)
 - Running instances of internal gRPC services (auth, manager)
-- The `common` contracts module
 
 ### Configuration
 
