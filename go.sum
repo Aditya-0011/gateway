@@ -12,6 +12,8 @@ github.com/Aditya-0011/common/contracts/go v0.0.0-20260607170641-425a25b048a0 h1
 github.com/Aditya-0011/common/contracts/go v0.0.0-20260607170641-425a25b048a0/go.mod h1:d1CSn+dSbXUQNhL/WppwfJWo3HQ97OkOugdA4XqZOOs=
 github.com/Aditya-0011/common/contracts/go v0.0.0-20260607171251-50cf5ae47839 h1:NwYeSsHXWKREN4haQMZzMH6eHhDgaQtcCkuV1qYXy5Y=
 github.com/Aditya-0011/common/contracts/go v0.0.0-20260607171251-50cf5ae47839/go.mod h1:d1CSn+dSbXUQNhL/WppwfJWo3HQ97OkOugdA4XqZOOs=
+github.com/Aditya-0011/common/contracts/go v0.0.0-20260610194507-22d4a328a1bf h1:+J7gq2upk3P3jaXnXFfO7qfvlQFnzruR3OE1Ks2EPYY=
+github.com/Aditya-0011/common/contracts/go v0.0.0-20260610194507-22d4a328a1bf/go.mod h1:d1CSn+dSbXUQNhL/WppwfJWo3HQ97OkOugdA4XqZOOs=
 github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c h1:udKWzYgxTojEKWjV8V+WSxDXJ4NFATAsZjh8iIbsQIg=
 github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=

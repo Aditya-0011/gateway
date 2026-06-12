@@ -28,8 +28,8 @@ func managerRouter(router fiber.Router, authMiddleware fiber.Handler, userClient
 
 	messageApi := router.Group("/message", authMiddleware)
 	{
-		messageApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetMessages)
-		messageApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.AddMessageRequest](validator), portfolioCall.AddMessage)
+		messageApi.Get("/list", middlewares.RequireSession(), middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetMessages)
+		messageApi.Post("/add", middlewares.Validate[manager.AddMessageRequest](validator), portfolioCall.AddMessage)
 		messageApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCall.DeleteMessage)
 	}
 

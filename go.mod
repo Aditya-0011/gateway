@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	buf.build/go/protovalidate v1.2.0
-	github.com/Aditya-0011/common/contracts/go v0.0.0-20260607171251-50cf5ae47839
+	github.com/Aditya-0011/common/contracts/go v0.0.0-20260610194507-22d4a328a1bf
 	github.com/gofiber/fiber/v3 v3.3.0
 	github.com/gofiber/storage/redis/v3 v3.4.7
 	github.com/redis/go-redis/v9 v9.20.0
