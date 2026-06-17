@@ -2,9 +2,9 @@ package calls
 
 import (
 	"context"
-	"fmt"
 	"gateway/db"
 	rpc "gateway/grpc/calls"
+	"gateway/schema"
 	"log/slog"
 	"os"
 
@@ -17,17 +17,11 @@ type AuthCallsParams struct {
 	redis     *db.RedisParams
 	client    auth.AuthServiceClient
 	validator protovalidate.Validator
+	isDev     bool
+	domain    string
 }
 
 func AuthCalls(redis *db.RedisParams, client auth.AuthServiceClient, validator protovalidate.Validator) *AuthCallsParams {
-	return &AuthCallsParams{
-		redis:     redis,
-		client:    client,
-		validator: validator,
-	}
-}
-
-func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 	isDev := os.Getenv("DEVELOPMENT") == "true"
 	domain := os.Getenv("DOMAIN")
 
@@ -37,6 +31,17 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 		slog.Error("DOMAIN environment variable is not set")
 		os.Exit(1)
 	}
+
+	return &AuthCallsParams{
+		redis:     redis,
+		client:    client,
+		validator: validator,
+		isDev:     isDev,
+		domain:    domain,
+	}
+}
+
+func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 
 	req := c.Locals("req").(*auth.LoginRequest)
 
@@ -56,9 +61,9 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 	c.Cookie(&fiber.Cookie{
 		Name:     "session",
 		Value:    sessionKey,
-		Domain:   domain,
+		Domain:   ac.domain,
 		HTTPOnly: true,
-		Secure:   !isDev,
+		Secure:   !ac.isDev,
 		SameSite: "Strict",
 		MaxAge:   int(ac.redis.SessionDuration.Seconds()),
 	})
@@ -86,17 +91,20 @@ func (ac *AuthCallsParams) RotateKey(c fiber.Ctx) error {
 
 func (ac *AuthCallsParams) Logout(c fiber.Ctx) error {
 	cookie := c.Cookies("session")
-	email, ok := c.Locals("userEmail").(string)
 
-	if !ok || email == "" {
+	authInfo, ok := c.Locals("auth").(*schema.AuthInfo)
+
+	if !ok || authInfo.UserEmail == "" {
 		c.ClearCookie("session")
 		return c.JSON(&auth.SimpleResponse{
 			Message: "No active session",
 		})
 	}
 
+	email := authInfo.UserEmail
+
 	go func() {
-		mappingKey := fmt.Sprintf("active:%s", email)
+		mappingKey := "active:" + email
 		ac.redis.DeleteSession(context.WithoutCancel(c.Context()), cookie, mappingKey)
 	}()
 

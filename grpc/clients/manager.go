@@ -24,7 +24,7 @@ func setupManagerClient() (*grpc.ClientConn, manager.UserServiceClient, manager.
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                5 * time.Minute,
 			Timeout:             3 * time.Second,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}),
 	)
 	if err != nil {

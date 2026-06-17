@@ -50,14 +50,20 @@ jobs:
 
             podman pull --authfile ~/.podman-auth.json ghcr.io/aditya-0011/gateway:latest
 
-            podman stop gateway || true
-            podman rm gateway || true
+            podman stop gateway 2>/dev/null || true
+            podman rm gateway 2>/dev/null || true
 
             podman run -d \
               --name gateway \
+              --network host \
               -p 3000:3000 \
               --env-file ~/gateway-production.conf \
               --restart unless-stopped \
+              --memory 768m \
+              --cpus 1 \
+              -e GOMAXPROCS=1 \
+              -e GOMEMLIMIT=600MiB \
+              -e GOGC=50 \
               ghcr.io/aditya-0011/gateway:latest
 
             podman image prune -f

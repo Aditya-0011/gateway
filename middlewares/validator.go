@@ -1,7 +1,9 @@
 package middlewares
 
 import (
+	"gateway/schema"
 	"strings"
+	"sync"
 
 	"buf.build/go/protovalidate"
 	"github.com/gofiber/fiber/v3"
@@ -44,8 +46,19 @@ func Validate[T any, Ptr interface {
 	*T
 	proto.Message
 }](validator protovalidate.Validator) fiber.Handler {
+	pool := sync.Pool{
+		New: func() any {
+			var msg Ptr = new(T)
+			return msg
+		},
+	}
+
 	return func(c fiber.Ctx) error {
-		var msg Ptr = new(T)
+		msg := pool.Get().(Ptr)
+		defer func() {
+			proto.Reset(msg)
+			pool.Put(msg)
+		}()
 
 		if len(c.Body()) > 0 {
 			if err := c.Bind().JSON(msg); err != nil {
@@ -55,13 +68,13 @@ func Validate[T any, Ptr interface {
 
 		trimStrings(msg)
 
-		if userId, ok := c.Locals("userId").(int); ok {
+		if authInfo, ok := c.Locals("auth").(*schema.AuthInfo); ok {
 			m := msg.ProtoReflect()
 			if fd := m.Descriptor().Fields().ByName("user_id"); fd != nil {
 				if fd.Kind() == protoreflect.Int32Kind {
-					m.Set(fd, protoreflect.ValueOfInt32(int32(userId)))
+					m.Set(fd, protoreflect.ValueOfInt32(int32(authInfo.UserId)))
 				} else if fd.Kind() == protoreflect.Int64Kind {
-					m.Set(fd, protoreflect.ValueOfInt64(int64(userId)))
+					m.Set(fd, protoreflect.ValueOfInt64(int64(authInfo.UserId)))
 				}
 			}
 		}

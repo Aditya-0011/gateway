@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	"math/rand/v2"
 
 	"github.com/gofiber/fiber/v3"
@@ -44,6 +43,6 @@ var (
 func notFoundHandler(c fiber.Ctx) error {
 	prefix := unmatchedRoutesErrorPrefixes[rand.IntN(len(unmatchedRoutesErrorPrefixes))]
 	message := unmatchedRoutesErrorMessages[rand.IntN(len(unmatchedRoutesErrorMessages))]
-	response := fmt.Sprintf("%s:%s", prefix, message)
+	response := prefix + ":" + message
 	return c.Status(fiber.StatusNotFound).SendString(response)
 }

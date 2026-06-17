@@ -2,8 +2,9 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"gateway/db"
+	"gateway/schema"
 	"gateway/utils"
 	"log/slog"
 	"os"
@@ -23,6 +24,8 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 		os.Exit(1)
 	}
 
+	maxAge := int(redis.SessionDuration.Seconds())
+
 	return func(c fiber.Ctx) error {
 		sessionKey := c.Cookies("session")
 		var apiKey string
@@ -37,8 +40,8 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 		if sessionKey != "" {
 			userData, err := redis.GetSession(c.Context(), sessionKey)
 			if err != nil {
-				if err.Error() != "invalid session" {
-					slog.Error("Redis Error", "error", err)
+				if !errors.Is(err, db.ErrInvalidSession) {
+					slog.LogAttrs(c.Context(), slog.LevelError, "Redis Error", slog.String("error", err.Error()))
 					c.ClearCookie("session")
 					return fiber.NewError(fiber.ErrInternalServerError.Code, "Logged out due to security reasons")
 				}
@@ -47,9 +50,9 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 			}
 
 			go func() {
-				mappingKey := fmt.Sprintf("active:%s", userData.Email)
+				mappingKey := "active:" + userData.Email
 				if err := redis.ExtendSession(context.WithoutCancel(c.Context()), sessionKey, mappingKey); err != nil {
-					slog.Error("Redis Error extending session", "error", err)
+					slog.LogAttrs(context.Background(), slog.LevelError, "Redis Error extending session", slog.String("error", err.Error()))
 				}
 			}()
 
@@ -60,21 +63,23 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 				HTTPOnly: true,
 				Secure:   !isDev,
 				SameSite: "Strict",
-				MaxAge:   int(redis.SessionDuration.Seconds()),
+				MaxAge:   maxAge,
 			})
 
-			c.Locals("userId", userData.Id)
-			c.Locals("userEmail", userData.Email)
-			c.Locals("authType", "session")
+			c.Locals("auth", &schema.AuthInfo{
+				UserId:    userData.Id,
+				UserEmail: userData.Email,
+				IsSession: true,
+			})
 
 		} else {
-			key := fmt.Sprintf("api:%s", utils.HashSHA256(apiKey))
+			key := "api:" + utils.HashSHA256(apiKey)
 
 			userData, err := redis.GetSession(c.Context(), key)
 
 			if err != nil {
-				if err.Error() != "invalid session" {
-					slog.Error("Redis Error retrieving api key", "error", err)
+				if !errors.Is(err, db.ErrInvalidSession) {
+					slog.LogAttrs(c.Context(), slog.LevelError, "Redis Error retrieving api key", slog.String("error", err.Error()))
 					return fiber.NewError(fiber.ErrInternalServerError.Code, "Internal server error")
 				}
 
@@ -87,21 +92,25 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 
 				err = redis.CreateApiSession(c.Context(), key, int(res.GetUserId()), res.GetUserEmail())
 				if err != nil {
-					slog.Error("Redis Error creating api session", "error", err)
+					slog.LogAttrs(c.Context(), slog.LevelError, "Redis Error creating api session", slog.String("error", err.Error()))
 					return fiber.NewError(fiber.ErrInternalServerError.Code, "Internal server error")
 				}
 
-				c.Locals("userId", int(res.GetUserId()))
-				c.Locals("userEmail", res.GetUserEmail())
-				c.Locals("authType", "api_key")
+				c.Locals("auth", &schema.AuthInfo{
+					UserId:    int(res.GetUserId()),
+					UserEmail: res.GetUserEmail(),
+					IsSession: false,
+				})
 			} else {
-				c.Locals("userId", userData.Id)
-				c.Locals("userEmail", userData.Email)
-				c.Locals("authType", "api_key")
+				c.Locals("auth", &schema.AuthInfo{
+					UserId:    userData.Id,
+					UserEmail: userData.Email,
+					IsSession: false,
+				})
 
 				go func() {
 					if err := redis.ExtendApiSession(context.WithoutCancel(c.Context()), key); err != nil {
-						slog.Error("Redis Error extending api session", "error", err)
+						slog.LogAttrs(context.Background(), slog.LevelError, "Redis Error extending api session", slog.String("error", err.Error()))
 					}
 				}()
 			}

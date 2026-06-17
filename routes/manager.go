@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	calls "gateway/grpc/calls/manager"
 	"gateway/middlewares"
 
@@ -10,12 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func managerRouter(router fiber.Router, authMiddleware fiber.Handler, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient) {
-	validator, err := protovalidate.New()
-
-	if err != nil {
-		panic(fmt.Errorf("failed to initialize validator: %w", err))
-	}
+func managerRouter(router fiber.Router, authMiddleware fiber.Handler, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient, validator protovalidate.Validator) {
 
 	portfolioUserCall := calls.PortfolioUserCalls(userClient, validator)
 	portfolioCall := calls.PortfolioCalls(portfolioClient, validator)

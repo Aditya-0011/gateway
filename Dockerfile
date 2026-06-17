@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.25.3
+ARG GO_VERSION=1.26.4
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS builder
 
 RUN apk add --no-cache git
@@ -15,15 +15,14 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 COPY . .
 
 ARG TARGETOS TARGETARCH
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w" -o bin-gateway main.go
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -ldflags "-s -w" -trimpath -o bin-gateway main.go
 
-FROM alpine:latest
-WORKDIR /app
-
-RUN apk --no-cache add ca-certificates tzdata
-
-COPY --from=builder /app/bin-gateway ./gateway
+FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /app/bin-gateway /gateway
 
 EXPOSE 3000
 
-ENTRYPOINT ["./gateway"]
+ENTRYPOINT ["/gateway"]

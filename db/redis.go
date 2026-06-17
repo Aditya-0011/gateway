@@ -2,17 +2,20 @@ package db
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"gateway/schema"
 	"gateway/utils"
 	"log/slog"
 	"time"
 
+	"github.com/bytedance/sonic"
+
 	fiberRedisStorage "github.com/gofiber/storage/redis/v3"
 	driver "github.com/redis/go-redis/v9"
 	"github.com/redis/go-redis/v9/maintnotifications"
 )
+
+var ErrInvalidSession = errors.New("invalid session")
 
 const (
 	sessionDuration = 15 * time.Minute
@@ -64,11 +67,11 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 		return nil, err
 	}
 
-	opt.PoolSize = 50
-	opt.MinIdleConns = 10
-	opt.MaxIdleConns = 25
-	opt.ConnMaxIdleTime = 30 * time.Second
-	opt.ConnMaxLifetime = 5 * time.Minute
+	opt.PoolSize = 10
+	opt.MinIdleConns = 2
+	opt.MaxIdleConns = 5
+	opt.ConnMaxIdleTime = 60 * time.Second
+	opt.ConnMaxLifetime = 10 * time.Minute
 	opt.PoolTimeout = 4 * time.Second
 	opt.DialTimeout = 5 * time.Second
 	opt.ReadTimeout = 3 * time.Second
@@ -101,7 +104,7 @@ func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail str
 	ctx, cancel := context.WithTimeout(c, timeoutDuration)
 	defer cancel()
 
-	mappingKey := fmt.Sprintf("active:%s", userEmail)
+	mappingKey := "active:" + userEmail
 
 	sessionKey, err := utils.GenerateSessionKey()
 	if err != nil {
@@ -112,7 +115,7 @@ func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail str
 		Id:    userId,
 		Email: userEmail,
 	}
-	jsonData, err := json.Marshal(tokenData)
+	jsonData, err := sonic.Marshal(tokenData)
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +136,7 @@ func (r *RedisParams) CreateApiSession(c context.Context, key string, userId int
 		Id:    userId,
 		Email: userEmail,
 	}
-	jsonData, err := json.Marshal(tokenData)
+	jsonData, err := sonic.Marshal(tokenData)
 	if err != nil {
 		return err
 	}
@@ -152,14 +155,14 @@ func (r *RedisParams) GetSession(c context.Context, key string) (schema.Token, e
 	val, err := r.client.Get(ctx, key).Result()
 
 	if err == driver.Nil {
-		return schema.Token{}, fmt.Errorf("invalid session")
+		return schema.Token{}, ErrInvalidSession
 	}
 	if err != nil {
 		return schema.Token{}, err
 	}
 
 	var tokenData schema.Token
-	if err := json.Unmarshal([]byte(val), &tokenData); err != nil {
+	if err := sonic.UnmarshalString(val, &tokenData); err != nil {
 		return schema.Token{}, err
 	}
 	return tokenData, nil

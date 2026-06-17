@@ -1,14 +1,16 @@
 package middlewares
 
 import (
+	"gateway/schema"
+
 	"github.com/gofiber/fiber/v3"
 )
 
 func RequireSession() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		authType := c.Locals("authType")
+		authInfo, ok := c.Locals("auth").(*schema.AuthInfo)
 
-		if authType != "session" {
+		if !ok || !authInfo.IsSession {
 			return fiber.ErrForbidden
 		}
 

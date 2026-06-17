@@ -13,10 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 )
 
@@ -37,7 +36,12 @@ func main() {
 	serviceClients := clients.Setup()
 	defer serviceClients.Close()
 
-	configs := fiber.Config{AppName: "Gateway"}
+	configs := fiber.Config{
+		AppName:           "Gateway",
+		JSONEncoder:       sonic.Marshal,
+		JSONDecoder:       sonic.Unmarshal,
+		ReduceMemoryUsage: true,
+	}
 
 	if os.Getenv("DEVELOPMENT") == "" {
 		configs.ProxyHeader = fiber.HeaderXForwardedFor
@@ -48,12 +52,6 @@ func main() {
 	}
 
 	app := fiber.New(configs)
-
-	app.Use(helmet.New())
-
-	app.Use(compress.New(compress.Config{
-		Level: compress.LevelBestSpeed,
-	}))
 
 	isDev := os.Getenv("DEVELOPMENT") == "true"
 
@@ -74,7 +72,7 @@ func main() {
 	app.Use(limiter.New(limiter.Config{
 		Max:               10,
 		Expiration:        1 * time.Minute,
-		LimiterMiddleware: limiter.SlidingWindow{},
+		LimiterMiddleware: limiter.FixedWindow{},
 		Storage:           database.Redis.Store,
 		KeyGenerator: func(c fiber.Ctx) string {
 			return "ratelimit" + c.IP()

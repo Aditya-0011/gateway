@@ -2,7 +2,6 @@ package calls
 
 import (
 	"context"
-	"gateway/db"
 	rpc "gateway/grpc/calls"
 
 	"buf.build/go/protovalidate"
@@ -11,7 +10,6 @@ import (
 )
 
 type PortfolioUserCallsParams struct {
-	redis     *db.RedisParams
 	client    manager.UserServiceClient
 	validator protovalidate.Validator
 }
