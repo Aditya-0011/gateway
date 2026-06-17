@@ -56,7 +56,6 @@ jobs:
             podman run -d \
               --name gateway \
               --network host \
-              -p 3000:3000 \
               --env-file ~/gateway-production.conf \
               --restart unless-stopped \
               --memory 768m \
