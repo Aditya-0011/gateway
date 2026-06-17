@@ -1,7 +1,7 @@
 ARG GO_VERSION=1.26.4
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS builder
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git tzdata ca-certificates
 
 WORKDIR /app
 ENV GOPRIVATE="github.com/Aditya-0011/*"
