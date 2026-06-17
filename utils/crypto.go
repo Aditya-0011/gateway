@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"unsafe"
 )
 
 func GenerateSessionKey() (string, error) {
@@ -16,6 +17,6 @@ func GenerateSessionKey() (string, error) {
 }
 
 func HashSHA256(data string) string {
-	hash := sha256.Sum256([]byte(data))
+	hash := sha256.Sum256(unsafe.Slice(unsafe.StringData(data), len(data)))
 	return hex.EncodeToString(hash[:])
 }

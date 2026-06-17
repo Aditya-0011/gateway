@@ -68,6 +68,7 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 	}
 
 	opt.PoolSize = 10
+	opt.Protocol = 3
 	opt.MinIdleConns = 2
 	opt.MaxIdleConns = 5
 	opt.ConnMaxIdleTime = 60 * time.Second
