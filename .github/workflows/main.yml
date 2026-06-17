@@ -60,9 +60,6 @@ jobs:
               --restart unless-stopped \
               --memory 768m \
               --cpus 1 \
-              -e GOMAXPROCS=1 \
-              -e GOMEMLIMIT=600MiB \
-              -e GOGC=50 \
               ghcr.io/aditya-0011/gateway:latest
 
             podman image prune -f

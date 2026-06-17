@@ -16,7 +16,7 @@ COPY . .
 
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-    go build -ldflags "-s -w" -trimpath -o bin-gateway main.go
+    go build -ldflags "-s -w" -trimpath -tags netgo -o bin-gateway main.go
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -24,5 +24,9 @@ COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /app/bin-gateway /gateway
 
 EXPOSE 3000
+
+ENV GOMAXPROCS=1 \
+    GOMEMLIMIT=600MiB \
+    GOGC=50
 
 ENTRYPOINT ["/gateway"]

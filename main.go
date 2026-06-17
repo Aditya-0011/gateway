@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -23,12 +25,18 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "runtime config",
+		slog.Int("GOMAXPROCS", runtime.GOMAXPROCS(0)),
+		slog.Int("NumCPU", runtime.NumCPU()),
+		slog.Int64("GOMEMLIMIT_MiB", debug.SetMemoryLimit(-1)/1024/1024),
+	)
+
 	setupCtx, setupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer setupCancel()
 
 	database, err := db.Setup(setupCtx)
 	if err != nil {
-		slog.Error("Failed to setup databases", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Failed to setup databases", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 	defer database.Cleanup()
@@ -59,7 +67,7 @@ func main() {
 	if allowedOrigins == "" && isDev {
 		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 	} else if allowedOrigins == "" {
-		slog.Error("CORS_ALLOWED_ORIGINS environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "CORS_ALLOWED_ORIGINS environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -95,7 +103,7 @@ func main() {
 	errChan := make(chan error, 1)
 
 	go func() {
-		slog.Info("Gateway server listening", "address", port)
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Gateway server listening", slog.String("port", port))
 		if err := app.Listen(fmt.Sprintf(":%s", port)); err != nil {
 			errChan <- err
 		}
@@ -105,7 +113,7 @@ func main() {
 	case <-quit:
 		slog.Info("Interrupt received. Starting graceful shutdown...")
 	case err := <-errChan:
-		slog.Error("Gateway server failed", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Gateway server failed", slog.String("error", err.Error()))
 		slog.Info("Starting graceful shutdown due to server error...")
 	}
 
@@ -115,8 +123,11 @@ func main() {
 		close(stopped)
 	}()
 
+	shutdownTimer := time.NewTimer(5 * time.Second)
+	defer shutdownTimer.Stop()
+
 	select {
-	case <-time.After(5 * time.Second):
+	case <-shutdownTimer.C:
 		slog.Info("Timeout reached (5s). Forcing server shutdown...")
 		app.Shutdown()
 	case <-stopped:
