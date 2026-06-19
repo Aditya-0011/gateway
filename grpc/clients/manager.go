@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -14,7 +15,7 @@ import (
 func setupManagerClient() (*grpc.ClientConn, manager.UserServiceClient, manager.PortfolioServiceClient) {
 	addr := os.Getenv("MANAGER_SERVICE_ADDR")
 	if addr == "" {
-		slog.Error("MANAGER_SERVICE_ADDR environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "MANAGER_SERVICE_ADDR environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -28,18 +29,18 @@ func setupManagerClient() (*grpc.ClientConn, manager.UserServiceClient, manager.
 		}),
 	)
 	if err != nil {
-		slog.Error("Failed to connect to manager service", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Failed to connect to manager service", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	managerUserServiceClient := manager.NewUserServiceClient(conn)
 	managerPortfolioServiceClient := manager.NewPortfolioServiceClient(conn)
 
-	slog.Info("Connected to manager service")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Connected to manager service")
 	return conn, managerUserServiceClient, managerPortfolioServiceClient
 }
 
 func closeManagerClient(conn *grpc.ClientConn) error {
-	slog.Info("Closing manager service connection")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Closing manager service connection")
 	return conn.Close()
 }

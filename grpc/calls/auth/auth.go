@@ -28,7 +28,7 @@ func AuthCalls(redis *db.RedisParams, client auth.AuthServiceClient, validator p
 	if domain == "" && isDev {
 		domain = ""
 	} else if domain == "" {
-		slog.Error("DOMAIN environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "DOMAIN environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -54,7 +54,7 @@ func (ac *AuthCallsParams) Login(c fiber.Ctx) error {
 
 	sessionKey, err := ac.redis.CreateSession(c.Context(), int(res.GetUserId()), res.GetUserEmail())
 	if err != nil {
-		slog.Error("Redis error during CreateSession", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Redis error during CreateSession", slog.String("error", err.Error()))
 		return fiber.ErrInternalServerError
 	}
 

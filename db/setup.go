@@ -13,7 +13,7 @@ type DatabaseParams struct {
 func Setup(ctx context.Context) (*DatabaseParams, error) {
 	redisURI := os.Getenv("REDIS_URL")
 	if redisURI == "" {
-		slog.Error("REDIS_URL environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "REDIS_URL environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -22,7 +22,7 @@ func Setup(ctx context.Context) (*DatabaseParams, error) {
 		return nil, err
 	}
 
-	slog.Info("Redis initialized")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Redis initialized")
 
 	return &DatabaseParams{
 		Redis: redis,
@@ -30,10 +30,10 @@ func Setup(ctx context.Context) (*DatabaseParams, error) {
 }
 
 func (s *DatabaseParams) Cleanup() error {
-	slog.Info("Closing database connections")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Closing database connections")
 
 	if err := s.Redis.Close(); err != nil {
-		slog.Error("Error closing Redis", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Error closing Redis", slog.String("error", err.Error()))
 	}
 
 	return nil

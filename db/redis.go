@@ -3,8 +3,9 @@ package db
 import (
 	"context"
 	"errors"
+	"gateway/internal/crypto"
+	"gateway/internal/timeout"
 	"gateway/schema"
-	"gateway/utils"
 	"log/slog"
 	"time"
 
@@ -74,7 +75,7 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 	opt.ConnMaxIdleTime = 60 * time.Second
 	opt.ConnMaxLifetime = 10 * time.Minute
 	opt.PoolTimeout = 4 * time.Second
-	opt.DialTimeout = 5 * time.Second
+	opt.DialTimeout = 2 * time.Second
 	opt.ReadTimeout = 3 * time.Second
 	opt.WriteTimeout = 3 * time.Second
 	opt.MaintNotificationsConfig = &maintnotifications.Config{
@@ -83,14 +84,14 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 
 	client := driver.NewClient(opt)
 
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 
-	slog.Info("Connected to Redis!")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Connected to Redis!")
 
 	store := fiberRedisStorage.NewFromConnection(client)
 
@@ -102,12 +103,12 @@ func ConnectRedis(c context.Context, uri string) (*RedisParams, error) {
 }
 
 func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail string) (string, error) {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	mappingKey := "active:" + userEmail
 
-	sessionKey, err := utils.GenerateSessionKey()
+	sessionKey, err := crypto.GenerateSessionKey()
 	if err != nil {
 		return "", err
 	}
@@ -130,7 +131,7 @@ func (r *RedisParams) CreateSession(c context.Context, userId int, userEmail str
 }
 
 func (r *RedisParams) CreateApiSession(c context.Context, key string, userId int, userEmail string) error {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	tokenData := schema.Token{
@@ -150,7 +151,7 @@ func (r *RedisParams) CreateApiSession(c context.Context, key string, userId int
 }
 
 func (r *RedisParams) GetSession(c context.Context, key string) (schema.Token, error) {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	val, err := r.client.Get(ctx, key).Result()
@@ -170,7 +171,7 @@ func (r *RedisParams) GetSession(c context.Context, key string) (schema.Token, e
 }
 
 func (r *RedisParams) ExtendSession(c context.Context, sessionId, mappingKey string) error {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	pipe := r.client.Pipeline()
@@ -181,23 +182,23 @@ func (r *RedisParams) ExtendSession(c context.Context, sessionId, mappingKey str
 }
 
 func (r *RedisParams) ExtendApiSession(c context.Context, key string) error {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	return r.client.Expire(ctx, key, sessionDuration).Err()
 }
 
 func (r *RedisParams) DeleteSession(c context.Context, sessionId, mappingKey string) error {
-	ctx, cancel := context.WithTimeout(c, timeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeoutDuration)
 	defer cancel()
 
 	return deleteSessionScript.Run(ctx, r.client, []string{mappingKey}, sessionId).Err()
 }
 
 func (r *RedisParams) Close() error {
-	slog.Info("Disconnecting from Redis...")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Disconnecting from Redis...")
 	if r.Store != nil {
-		slog.Info("Closing Redis store...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Closing Redis store...")
 		return r.Store.Close()
 	}
 	return r.client.Close()

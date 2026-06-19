@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -14,7 +15,7 @@ import (
 func setupAuthClient() (*grpc.ClientConn, auth.AuthServiceClient) {
 	addr := os.Getenv("AUTH_SERVICE_ADDR")
 	if addr == "" {
-		slog.Error("AUTH_SERVICE_ADDR environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "AUTH_SERVICE_ADDR environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -28,17 +29,17 @@ func setupAuthClient() (*grpc.ClientConn, auth.AuthServiceClient) {
 		}),
 	)
 	if err != nil {
-		slog.Error("Failed to connect to auth service", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "Failed to connect to auth service", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	authClient := auth.NewAuthServiceClient(conn)
 
-	slog.Info("Connected to auth service")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Connected to auth service")
 	return conn, authClient
 }
 
 func closeAuthClient(conn *grpc.ClientConn) error {
-	slog.Info("Closing auth service connection")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Closing auth service connection")
 	return conn.Close()
 }

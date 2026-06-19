@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"gateway/db"
+	"gateway/internal/crypto"
 	"gateway/schema"
-	"gateway/utils"
 	"log/slog"
 	"os"
 
@@ -20,7 +20,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 	if domain == "" && isDev {
 		domain = ""
 	} else if domain == "" {
-		slog.Error("DOMAIN environment variable is not set")
+		slog.LogAttrs(context.Background(), slog.LevelError, "DOMAIN environment variable is not set")
 		os.Exit(1)
 	}
 
@@ -73,7 +73,7 @@ func Authenticate(redis *db.RedisParams, authClient auth.AuthServiceClient) fibe
 			})
 
 		} else {
-			key := "api:" + utils.HashSHA256(apiKey)
+			key := "api:" + crypto.HashSHA256(apiKey)
 
 			userData, err := redis.GetSession(c.Context(), key)
 

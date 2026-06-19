@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gateway/db"
 	"gateway/grpc/clients"
+	"gateway/middlewares"
 	"gateway/routes"
 	"log/slog"
 	"os"
@@ -71,6 +72,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	app.Use(middlewares.Logger())
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Split(allowedOrigins, ","),
 		AllowCredentials: true,
@@ -111,10 +114,10 @@ func main() {
 
 	select {
 	case <-quit:
-		slog.Info("Interrupt received. Starting graceful shutdown...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Interrupt received. Starting graceful shutdown...")
 	case err := <-errChan:
 		slog.LogAttrs(context.Background(), slog.LevelError, "Gateway server failed", slog.String("error", err.Error()))
-		slog.Info("Starting graceful shutdown due to server error...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Starting graceful shutdown due to server error...")
 	}
 
 	stopped := make(chan struct{})
@@ -128,12 +131,12 @@ func main() {
 
 	select {
 	case <-shutdownTimer.C:
-		slog.Info("Timeout reached (5s). Forcing server shutdown...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Timeout reached (5s). Forcing server shutdown...")
 		app.Shutdown()
 	case <-stopped:
-		slog.Info("Server gracefully stopped within timeout.")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "Server gracefully stopped within timeout.")
 	}
 
-	slog.Info("Shutdown complete. Exiting main...")
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "Shutdown complete. Exiting main...")
 
 }

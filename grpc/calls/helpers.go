@@ -2,7 +2,7 @@ package calls
 
 import (
 	"context"
-	"gateway/utils"
+	"gateway/internal/timeout"
 
 	"github.com/gofiber/fiber/v3"
 	"google.golang.org/grpc/codes"
@@ -10,7 +10,7 @@ import (
 )
 
 func Call[T any](c fiber.Ctx, action func(context.Context) (T, error)) (T, error) {
-	ctx, cancel := context.WithTimeout(c, utils.TimeoutDuration)
+	ctx, cancel := timeout.WithDeadline(c, timeout.Duration)
 	defer cancel()
 
 	res, err := action(ctx)
