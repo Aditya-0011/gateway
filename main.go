@@ -53,10 +53,11 @@ func main() {
 	}
 
 	if os.Getenv("DEVELOPMENT") == "" {
-		configs.ProxyHeader = fiber.HeaderXForwardedFor
+		configs.ProxyHeader = "X-Real-IP"
 		configs.TrustProxy = true
 		configs.TrustProxyConfig = fiber.TrustProxyConfig{
-			Proxies: []string{"127.0.0.1"},
+			Loopback: true,
+			Private:  true,
 		}
 	}
 
@@ -64,7 +65,7 @@ func main() {
 
 	isDev := os.Getenv("DEVELOPMENT") == "true"
 
-	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	allowedOrigins := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if allowedOrigins == "" && isDev {
 		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 	} else if allowedOrigins == "" {
@@ -74,8 +75,14 @@ func main() {
 
 	app.Use(middlewares.Logger())
 
+	origins := strings.Split(allowedOrigins, ",")
+	for i := range origins {
+		origins[i] = strings.TrimSpace(origins[i])
+	}
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     strings.Split(allowedOrigins, ","),
+		AllowOrigins:     origins,
+		AllowMethods:     []string{"GET", "POST"},
 		AllowCredentials: true,
 		MaxAge:           3600,
 	}))
