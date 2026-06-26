@@ -88,9 +88,9 @@ func main() {
 	}))
 
 	app.Use(limiter.New(limiter.Config{
-		Max:               10,
+		Max:               15,
 		Expiration:        1 * time.Minute,
-		LimiterMiddleware: limiter.FixedWindow{},
+		LimiterMiddleware: limiter.SlidingWindow{},
 		Storage:           database.Redis.Store,
 		KeyGenerator: func(c fiber.Ctx) string {
 			return "ratelimit" + c.IP()
