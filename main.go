@@ -88,7 +88,7 @@ func main() {
 	}))
 
 	app.Use(limiter.New(limiter.Config{
-		Max:               15,
+		Max:               60,
 		Expiration:        1 * time.Minute,
 		LimiterMiddleware: limiter.SlidingWindow{},
 		Storage:           database.Redis.Store,
