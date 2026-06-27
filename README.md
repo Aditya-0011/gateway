@@ -1,136 +1,94 @@
-# API Gateway Service
+# Gateway service
 
 A high-performance HTTP perimeter gateway written in Go using the Fiber framework.
 
-[![Go Version](https://img.shields.io/badge/Go->=1.25.3-00add8?style=flat-square&logo=go)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D1.26.4-00add8?style=flat-square&logo=go)](https://golang.org/)
 [![Fiber](https://img.shields.io/badge/Fiber-Framework-244c5a?style=flat-square)](https://gofiber.io/)
 [![Redis](https://img.shields.io/badge/Database-Redis-DC382D?style=flat-square&logo=redis)](https://redis.io/)
 
 ## Overview
 
-The Gateway Service acts as the public-facing RESTful perimeter for the developer platform. Built on top of the exceptionally fast Fiber framework, its primary purpose is to aggregate and translate incoming HTTP/REST requests from the frontend UIs and forward them to the tightly-coupled internal gRPC microservices (`auth`, `manager`). It provides a centralized layer for security, CORS handling, and sliding-window rate-limiting so the internal services remain purely focused on business logic.
+The gateway service acts as the public-facing RESTful perimeter for the platform. Built on the Fiber framework, it aggregates incoming HTTP requests from the frontend UIs and forwards them to the internal gRPC microservices (`auth`, `manager`). It provides a centralized layer for security, CORS handling, and sliding-window rate-limiting.
 
-## Architecture & Tech Stack
+## Architecture
 
-- **Framework**: `github.com/gofiber/fiber/v3` for high-throughput HTTP routing.
-- **Middlewares**: Integrated Helmet (security headers), Compress (payload optimization), CORS, and Rate Limiter.
-- **Cache/Storage**: Connects to Redis to back the sliding-window rate limiter.
-- **gRPC Clients**: Maintains persistent connections to internal services using compiled Protocol Buffer contracts.
-- **Logging**: Idiomatic structured logging via `log/slog`.
+This section explains the technologies and physical layout of the gateway.
 
-### Project Structure
+- **Framework**: `github.com/gofiber/fiber/v3` for HTTP routing
+- **Middlewares**: Integrated payload compression, CORS, and rate limiting
+- **Storage**: Connects to Redis to back the sliding-window rate limiter
+- **gRPC clients**: Maintains persistent connections to internal services
+- **Logging**: Idiomatic structured logging via `log/slog`
 
-```text
-.
-├── db/            # Database and cache connection logic (e.g., Redis)
-├── grpc/          # Setup and clients for communicating with backend gRPC services
-├── middlewares/   # Custom Fiber HTTP interceptors
-├── routes/        # HTTP route definitions mapping to internal clients
-├── schema/        # Data validation and structuring schemas
-├── utils/         # Helper utilities
-├── main.go        # Gateway entrypoint and middleware orchestration
-└── go.mod         # Dependency management
-```
+### Project structure
+
+- `db/`: Database and cache connection logic
+- `grpc/`: Setup and clients for communicating with backend gRPC services
+- `middlewares/`: Custom Fiber HTTP interceptors
+- `routes/`: HTTP route definitions mapping to internal clients
+- `schema/`: Data validation and structuring schemas
+- `utils/`: Helper utilities
+- `main.go`: Gateway entrypoint and middleware orchestration
+- `go.mod`: Dependency management
 
 ## Features
 
-- ⚡ **High-Performance Routing**: Exposes a lightning-fast HTTP API built on top of Fiber.
-- 🚦 **Rate Limiting**: Sliding-window rate limiter backed by Redis to prevent abuse.
-- 🛡️ **Robust Security Middlewares**: Built-in HTTP security headers (Helmet), payload compression, and strict CORS policies tailored for the specific UI domains.
-- 🔐 **Perimeter Security**: Secure cookie-based sessions (backed by Redis) and API key validation middleware that authorizes requests before forwarding them to the internal network.
-- ✅ **Request Validation**: Custom validation middleware to reject malformed REST payloads early.
-- 🔄 **gRPC Proxying**: Seamlessly translates REST payloads to tightly-coupled internal gRPC contracts.
-- 🚦 **Graceful Shutdown**: Safely drains active HTTP requests and closes gRPC client connections upon OS interrupts.
+This section outlines the capabilities of the gateway.
 
-## API Summary
+- **High-performance routing**: Exposes an HTTP API built on top of Fiber.
+- **Rate limiting**: Uses a sliding-window rate limiter backed by Redis.
+- **Security middlewares**: Uses strict CORS policies.
+- **Perimeter security**: Secures routes using cookie-based sessions (backed by Redis) for the admin console, and API key validation middleware for server-to-server communication (e.g., the Next.js frontend portfolio backend).
+- **Request validation**: Rejects malformed REST payloads early using custom middleware.
+- **gRPC proxying**: Translates REST payloads to internal gRPC contracts.
+- **Graceful shutdown**: Drains active HTTP requests and closes gRPC client connections upon OS interrupts.
+
+## API summary
 
 The gateway implements a unified REST interface that orchestrates interactions for the platform:
-- **Auth Routes**: Login, registration, and API key management endpoints (proxied to `auth`).
-- **Portfolio Routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies (proxied to `manager`).
-- **Public vs Protected**: Segregates public read endpoints (used by the public portfolio) from secured write endpoints (used by the admin console).
 
-## Getting Started
+- **Auth routes**: Login, registration, and API key management endpoints
+- **Portfolio routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies
+- **Public vs protected**: Segregates public read endpoints from secured write endpoints
+
+## Getting started
+
+This section explains how to run the gateway locally.
 
 ### Prerequisites
 
-- [Go](https://golang.org/dl/) 1.25.3 or higher
-- A running [Redis](https://redis.io/download/) server (for rate limiting)
-- Running instances of internal gRPC services (auth, manager)
+- [Go](https://golang.org/dl/) 1.26.4 or higher
+- A running [Redis](https://redis.io/download/) server
+- Running instances of internal gRPC services (`auth`, `manager`)
 
 ### Configuration
 
-The service relies on environment variables for configuration. You should export these directly in your shell environment.
+Export these variables directly in your shell environment:
 
-| Variable | Description | Default | Required |
-| :--- | :--- | :--- | :---: |
-| `REDIS_URL` | Connection string for Redis | - | **Yes** |
-| `DEVELOPMENT` | Set to `"true"` to enable looser defaults (like default CORS and IP proxying) | - | No |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | - | Yes (if not in dev) |
-| `PORT` | The port on which the HTTP gateway will listen | `3000` | No |
-| `AUTH_SERVICE_URL` | Internal gRPC address of the Auth Service | - | **Yes** |
-| `MANAGER_SERVICE_URL` | Internal gRPC address of the Manager Service | - | **Yes** |
+| Variable | Description | Required |
+| :--- | :--- | :---: |
+| `REDIS_URL` | Connection string for Redis | **Yes** |
+| `DEVELOPMENT` | Set to `"true"` to enable looser defaults | No |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | Yes (if not in dev) |
+| `PORT` | The port on which the HTTP gateway will listen (Default: `3000`) | No |
+| `AUTH_SERVICE_URL` | Internal gRPC address of the auth service | **Yes** |
+| `MANAGER_SERVICE_URL` | Internal gRPC address of the manager service | **Yes** |
 
-### Polyrepo Local Setup
+### Running the service
 
-This project uses a polyrepo architecture. Services like `auth`, `manager`, and `gateway` rely on the `common` repository. To run this locally without dependency errors, clone all repositories side-by-side into the same parent directory so that relative paths resolve correctly.
-
-Example local setup:
-```text
-infrastructure/
-├── common/
-├── auth/
-├── manager/
-└── gateway/
-```
-
-### Running the Service
-
-For standard execution, use the Go CLI:
+Run the service using the Go CLI:
 
 ```bash
 go run main.go
 ```
 
-#### Hot Reloading for Local Development
-
-To watch for file changes and automatically rebuild and restart the server, you can use [air](https://github.com/cosmtrek/air). Since `air` is written purely in Go, it compiles to a single binary and runs natively on Windows, macOS, and Linux without any OS-specific shell scripts.
+To watch for file changes and automatically rebuild and restart the server, use [air](https://github.com/cosmtrek/air):
 
 ```bash
 go install github.com/air-verse/air@latest
 air
 ```
 
-## CI/CD & Production Deployment
+## Deployment
 
-The service is fully containerized and leverages GitHub Actions (`.github/workflows/main.yml`) for automated builds and deployment.
-
-### 1. Server Initialization
-Before the CI/CD pipeline can deploy the application for the first time, you must initialize the host environment on your VM.
-
-Create the shared network that the containers will use to communicate (if you haven't already created it for other services):
-```bash
-podman network create infra-network
-```
-
-Create the environment variable file that the container will read on startup:
-```bash
-touch ~/gateway-production.conf
-# Edit the file to include your REDIS_URL and internal gRPC URLs:
-# REDIS_URL=redis://localhost:6379
-# AUTH_SERVICE_URL=auth-service:7295
-# MANAGER_SERVICE_URL=manager-service:7296
-# CORS_ALLOWED_ORIGINS=https://yourdomain.com
-```
-
-### 2. Automated Build (GHCR)
-The workflow uses Docker Buildx with QEMU to cross-compile a `linux/arm64` container image. 
-Because the project depends on private GitHub modules (`common`), the workflow injects a `PAT_TOKEN` secret during the build stage to securely download the private contracts without leaving credentials in the final image. The resulting image is pushed to the GitHub Container Registry (`ghcr.io/aditya-0011/gateway`).
-
-### 3. Production Execution (Podman)
-In production, the service is deployed to a remote Linux VM using **Podman**. The CI pipeline automatically SSHs into the server, pulls the latest GHCR image, and seamlessly swaps the running container.
-
-The container is orchestrated with the following constraints:
-- Attached to the shared internal network (`--network infra-network`), allowing it to communicate with internal gRPC services using their container names.
-- Exposes port `3000` to the host VM to accept incoming public traffic (`-p 3000:3000`).
-- Reads configuration purely from the host-level environment file (`--env-file ~/gateway-production.conf`).
-- Configured to restart automatically (`--restart unless-stopped`).
+The service is containerized and leverages GitHub Actions (`.github/workflows/main.yml`) for automated builds and deployment.
