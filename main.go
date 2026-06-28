@@ -53,7 +53,7 @@ func main() {
 	}
 
 	if os.Getenv("DEVELOPMENT") == "" {
-		configs.ProxyHeader = "X-Real-IP"
+		configs.ProxyHeader = "X-Forwarded-For"
 		configs.TrustProxy = true
 		configs.TrustProxyConfig = fiber.TrustProxyConfig{
 			Loopback: true,
