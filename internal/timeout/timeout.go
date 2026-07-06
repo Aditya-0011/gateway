@@ -6,12 +6,9 @@ import (
 )
 
 const (
-	Duration = 7 * time.Second
+	Duration = 9500 * time.Millisecond
 )
 
 func WithDeadline(c context.Context, d time.Duration) (context.Context, context.CancelFunc) {
-	if _, ok := c.Deadline(); ok {
-		return c, func() {}
-	}
 	return context.WithTimeout(c, d)
 }
