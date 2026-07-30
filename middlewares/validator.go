@@ -62,7 +62,10 @@ func Validate[T any, Ptr interface {
 
 		if len(c.Body()) > 0 {
 			if err := c.Bind().JSON(msg); err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid request body format")
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error":   "Invalid request body format",
+					"details": err.Error(),
+				})
 			}
 		}
 
