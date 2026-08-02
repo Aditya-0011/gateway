@@ -28,11 +28,11 @@ func walletRouter(router fiber.Router, userClient wallet.UserServiceClient, fina
 
 	transactionApi := router.Group("/transaction")
 	{
-		transactionApi.Post("/list", middlewares.Validate[wallet.GetTransactionsRequest](validator), financeCall.GetTransactions)
+		transactionApi.Query("/list", middlewares.Validate[wallet.GetTransactionsRequest](validator), financeCall.GetTransactions)
 		transactionApi.Post("/add", middlewares.Validate[wallet.CreateTransactionRequest](validator), financeCall.CreateTransaction)
 		transactionApi.Post("/edit", middlewares.Validate[wallet.UpdateTransactionRequest](validator), financeCall.UpdateTransaction)
 		transactionApi.Post("/delete", middlewares.Validate[wallet.DeleteRequest](validator), financeCall.DeleteTransaction)
 
-		transactionApi.Post("/history", middlewares.Validate[wallet.GetTransactionsUpdateHistoryRequest](validator), financeCall.GetTransactionsUpdateHistory)
+		transactionApi.Query("/history", middlewares.Validate[wallet.GetTransactionsUpdateHistoryRequest](validator), financeCall.GetTransactionsUpdateHistory)
 	}
 }

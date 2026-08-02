@@ -67,7 +67,7 @@ func main() {
 
 	allowedOrigins := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if allowedOrigins == "" && isDev {
-		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175"
 	} else if allowedOrigins == "" {
 		slog.LogAttrs(context.Background(), slog.LevelError, "CORS_ALLOWED_ORIGINS environment variable is not set")
 		os.Exit(1)
@@ -82,7 +82,7 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
-		AllowMethods:     []string{"GET", "POST"},
+		AllowMethods:     []string{"GET", "POST", ""},
 		AllowCredentials: true,
 		MaxAge:           3600,
 	}))
