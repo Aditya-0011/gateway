@@ -82,7 +82,7 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
-		AllowMethods:     []string{"GET", "POST", ""},
+		AllowMethods:     []string{"GET", "POST", "QUERY"},
 		AllowCredentials: true,
 		MaxAge:           3600,
 	}))
