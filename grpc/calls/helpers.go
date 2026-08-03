@@ -31,6 +31,8 @@ func Call[T any](c fiber.Ctx, action func(context.Context) (T, error)) (T, error
 				return zero, fiber.NewError(fiber.StatusForbidden, st.Message())
 			case codes.DeadlineExceeded:
 				return zero, fiber.NewError(fiber.StatusGatewayTimeout, st.Message())
+			case codes.FailedPrecondition:
+				return zero, fiber.NewError(fiber.StatusPreconditionFailed, st.Message())
 			default:
 				return zero, fiber.NewError(fiber.StatusInternalServerError, st.Message())
 			}
