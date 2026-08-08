@@ -85,6 +85,21 @@ func (w *FinanceCallsParams) DeleteTransaction(c fiber.Ctx) error {
 	})
 }
 
+func (w *FinanceCallsParams) ExportTransactions(c fiber.Ctx) error {
+	req := c.Locals("req").(*wallet.ExportTransactionsRequest)
+
+	res, err := rpc.Call(c, func(ctx context.Context) (*wallet.ExportTransactionsResponse, error) {
+		return w.client.ExportTransactions(ctx, req)
+	})
+	if err != nil {
+		return err
+	}
+
+	c.Set("Content-Disposition", "attachment; filename="+res.FileName)
+	c.Set("Content-Type", res.ContentType)
+	return c.Send(res.FileData)
+}
+
 func (w *FinanceCallsParams) GetTransactionsUpdateHistory(c fiber.Ctx) error {
 	req := c.Locals("req").(*wallet.GetTransactionsUpdateHistoryRequest)
 

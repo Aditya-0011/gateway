@@ -33,6 +33,7 @@ func walletRouter(router fiber.Router, userClient wallet.UserServiceClient, fina
 		transactionApi.Post("/edit", middlewares.Validate[wallet.UpdateTransactionRequest](validator), financeCall.UpdateTransaction)
 		transactionApi.Post("/delete", middlewares.Validate[wallet.DeleteRequest](validator), financeCall.DeleteTransaction)
 
+		transactionApi.Query("/export", middlewares.Validate[wallet.ExportTransactionsRequest](validator), financeCall.ExportTransactions)
 		transactionApi.Query("/history", middlewares.Validate[wallet.GetTransactionsUpdateHistoryRequest](validator), financeCall.GetTransactionsUpdateHistory)
 	}
 }
