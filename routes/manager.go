@@ -14,41 +14,31 @@ func managerRouter(router fiber.Router, requireHost fiber.Handler, authMiddlewar
 	portfolioUserCall := calls.PortfolioUserCalls(userClient, validator)
 	portfolioCall := calls.PortfolioCalls(portfolioClient, validator)
 
-	userApi := router.Group("/user", requireHost, authMiddleware)
-	{
-		userApi.Get("/details", middlewares.Validate[manager.SimpleRequest](validator), portfolioUserCall.GetUserDetails)
-		userApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.EditUserDetailsRequest](validator), portfolioUserCall.EditUserDetails)
-	}
+	// User
+	router.Get("/user/details", requireHost, authMiddleware, middlewares.Validate[manager.SimpleRequest](validator), portfolioUserCall.GetUserDetails)
+	router.Post("/user/edit", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.EditUserDetailsRequest](validator), portfolioUserCall.EditUserDetails)
 
-	messageApi := router.Group("/message", requireHost, authMiddleware)
-	{
-		messageApi.Get("/list", middlewares.RequireSession(), middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetMessages)
-		messageApi.Post("/add", middlewares.Validate[manager.AddMessageRequest](validator), portfolioCall.AddMessage)
-		messageApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCall.DeleteMessage)
-	}
+	// Message
+	router.Get("/message/list", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetMessages)
+	router.Post("/message/add", requireHost, authMiddleware, middlewares.Validate[manager.AddMessageRequest](validator), portfolioCall.AddMessage)
+	router.Post("/message/delete", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCall.DeleteMessage)
 
-	technologyApi := router.Group("/technology", requireHost, authMiddleware)
-	{
-		technologyApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetTechnologies)
-		technologyApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyCreateRequest](validator), portfolioCall.CreateTechnology)
-		technologyApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyUpdateRequest](validator), portfolioCall.UpdateTechnology)
-		technologyApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteTechnology)
-	}
+	// Technology
+	router.Get("/technology/list", requireHost, authMiddleware, middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetTechnologies)
+	router.Post("/technology/add", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.TechnologyCreateRequest](validator), portfolioCall.CreateTechnology)
+	router.Post("/technology/edit", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.TechnologyUpdateRequest](validator), portfolioCall.UpdateTechnology)
+	router.Post("/technology/delete", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteTechnology)
 
-	projectApi := router.Group("/project", requireHost, authMiddleware)
-	{
-		projectApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetProjects)
-		projectApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ProjectCreateRequest](validator), portfolioCall.CreateProject)
-		projectApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ProjectUpdateRequest](validator), portfolioCall.UpdateProject)
-		projectApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteProject)
-	}
+	// Project
+	router.Get("/project/list", requireHost, authMiddleware, middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetProjects)
+	router.Post("/project/add", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.ProjectCreateRequest](validator), portfolioCall.CreateProject)
+	router.Post("/project/edit", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.ProjectUpdateRequest](validator), portfolioCall.UpdateProject)
+	router.Post("/project/delete", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteProject)
 
-	experienceApi := router.Group("/experience", requireHost, authMiddleware)
-	{
-		experienceApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetExperiences)
-		experienceApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceCreateRequest](validator), portfolioCall.CreateExperience)
-		experienceApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceUpdateRequest](validator), portfolioCall.UpdateExperience)
-		experienceApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteExperience)
-	}
-
+	// Experience
+	router.Get("/experience/list", requireHost, authMiddleware, middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetExperiences)
+	router.Post("/experience/add", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.ExperienceCreateRequest](validator), portfolioCall.CreateExperience)
+	router.Post("/experience/edit", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.ExperienceUpdateRequest](validator), portfolioCall.UpdateExperience)
+	router.Post("/experience/delete", requireHost, authMiddleware, middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteExperience)
 }
+

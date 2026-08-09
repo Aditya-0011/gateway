@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"log/slog"
 	"math/rand/v2"
 
 	"github.com/gofiber/fiber/v3"
@@ -45,11 +44,5 @@ func notFoundHandler(c fiber.Ctx) error {
 	prefix := unmatchedRoutesErrorPrefixes[rand.IntN(len(unmatchedRoutesErrorPrefixes))]
 	message := unmatchedRoutesErrorMessages[rand.IntN(len(unmatchedRoutesErrorMessages))]
 	response := prefix + ":" + message
-
-	slog.LogAttrs(c.Context(), slog.LevelWarn, "notFoundHandler triggered",
-		slog.String("host", c.Hostname()),
-		slog.String("path", c.Path()),
-	)
-
 	return c.Status(fiber.StatusNotFound).SendString(response)
 }
