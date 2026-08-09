@@ -8,7 +8,7 @@ A high-performance HTTP perimeter gateway written in Go using the Fiber framewor
 
 ## Overview
 
-The gateway service acts as the public-facing RESTful perimeter for the platform. Built on the Fiber framework, it aggregates incoming HTTP requests from the frontend UIs and forwards them to the internal gRPC microservices (`auth`, `manager`). It provides a centralized layer for security, CORS handling, and sliding-window rate-limiting.
+The gateway service acts as the public-facing RESTful perimeter for the platform. Built on the Fiber framework, it aggregates incoming HTTP requests from the frontend UIs and forwards them to the internal gRPC microservices (`auth`, `manager`, `wallet`). It provides a centralized layer for security, CORS handling, and sliding-window rate-limiting.
 
 ## Architecture
 
@@ -49,6 +49,7 @@ The gateway implements a unified REST interface that orchestrates interactions f
 
 - **Auth routes**: Login, registration, and API key management endpoints
 - **Portfolio routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies
+- **Wallet routes**: Endpoints for managing financial transactions and balances
 - **Public vs protected**: Segregates public read endpoints from secured write endpoints
 
 ## Getting started
@@ -59,7 +60,7 @@ This section explains how to run the gateway locally.
 
 - [Go](https://golang.org/dl/) 1.26.4 or higher
 - A running [Redis](https://redis.io/download/) server
-- Running instances of internal gRPC services (`auth`, `manager`)
+- Running instances of internal gRPC services (`auth`, `manager`, `wallet`)
 
 ### Configuration
 
@@ -73,6 +74,7 @@ Export these variables directly in your shell environment:
 | `PORT` | The port on which the HTTP gateway will listen (Default: `3000`) | No |
 | `AUTH_SERVICE_URL` | Internal gRPC address of the auth service | **Yes** |
 | `MANAGER_SERVICE_URL` | Internal gRPC address of the manager service | **Yes** |
+| `WALLET_SERVICE_URL` | Internal gRPC address of the wallet service | **Yes** |
 
 ### Running the service
 
