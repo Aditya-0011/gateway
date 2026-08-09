@@ -5,6 +5,7 @@ import (
 	"gateway/db"
 	"gateway/grpc/clients"
 	"gateway/middlewares"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -28,6 +29,7 @@ func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams)
 			return c.Next()
 		}
 
+		slog.LogAttrs(c.Context(), slog.LevelWarn, "Top level middleware failed", slog.String("host", host))
 		return notFoundHandler(c)
 	})
 
