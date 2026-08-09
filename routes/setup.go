@@ -35,14 +35,11 @@ func Setup(app *fiber.App, redis *db.RedisParams, clients *clients.ClientParams)
 
 	authMiddleware := middlewares.Authenticate(redis, clients.AuthClient)
 
-	authGroup := app.Group("", middlewares.RequireHost("api.auth.", isDevEnv, notFoundHandler))
-	authRouter(authGroup, redis, clients.AuthClient, authMiddleware, validator)
+	authRouter(app, middlewares.RequireHost("api.auth.", isDevEnv, notFoundHandler), redis, clients.AuthClient, authMiddleware, validator)
 
-	managerGroup := app.Group("", middlewares.RequireHost("api.manager.", isDevEnv, notFoundHandler), authMiddleware)
-	managerRouter(managerGroup, clients.ManagerUserClient, clients.ManagerPortfolioClient, validator)
+	managerRouter(app, middlewares.RequireHost("api.manager.", isDevEnv, notFoundHandler), authMiddleware, clients.ManagerUserClient, clients.ManagerPortfolioClient, validator)
 
-	walletGroup := app.Group("", middlewares.RequireHost("api.wallet.", isDevEnv, notFoundHandler), authMiddleware, middlewares.RequireSession())
-	walletRouter(walletGroup, clients.WalletUserClient, clients.WalletFinanceClient, validator)
+	walletRouter(app, middlewares.RequireHost("api.wallet.", isDevEnv, notFoundHandler), authMiddleware, middlewares.RequireSession(), clients.WalletUserClient, clients.WalletFinanceClient, validator)
 
 	app.Use(notFoundHandler)
 }

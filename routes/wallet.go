@@ -9,16 +9,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func walletRouter(router fiber.Router, userClient wallet.UserServiceClient, financeClient wallet.FinanceServiceClient, validator protovalidate.Validator) {
+func walletRouter(router fiber.Router, requireHost fiber.Handler, authMiddleware fiber.Handler, requireSession fiber.Handler, userClient wallet.UserServiceClient, financeClient wallet.FinanceServiceClient, validator protovalidate.Validator) {
 	walletUserCall := calls.WalletUserCalls(userClient, validator)
 	financeCall := calls.FinanceCalls(financeClient, validator)
 
-	userApi := router.Group("/user")
+	userApi := router.Group("/user", requireHost, authMiddleware, requireSession)
 	{
 		userApi.Get("/summary", middlewares.Validate[wallet.SimpleRequest](validator), walletUserCall.GetUserSummary)
 	}
 
-	categoryApi := router.Group("/category")
+	categoryApi := router.Group("/category", requireHost, authMiddleware, requireSession)
 	{
 		categoryApi.Get("/list", middlewares.Validate[wallet.SimpleRequest](validator), financeCall.GetCategories)
 		categoryApi.Post("/add", middlewares.Validate[wallet.CreateCategoryRequest](validator), financeCall.CreateCategory)
@@ -26,7 +26,7 @@ func walletRouter(router fiber.Router, userClient wallet.UserServiceClient, fina
 		categoryApi.Post("/delete", middlewares.Validate[wallet.DeleteRequest](validator), financeCall.DeleteCategory)
 	}
 
-	transactionApi := router.Group("/transaction")
+	transactionApi := router.Group("/transaction", requireHost, authMiddleware, requireSession)
 	{
 		transactionApi.Query("/list", middlewares.Validate[wallet.GetTransactionsRequest](validator), financeCall.GetTransactions)
 		transactionApi.Post("/add", middlewares.Validate[wallet.CreateTransactionRequest](validator), financeCall.CreateTransaction)

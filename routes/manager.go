@@ -9,25 +9,25 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func managerRouter(router fiber.Router, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient, validator protovalidate.Validator) {
+func managerRouter(router fiber.Router, requireHost fiber.Handler, authMiddleware fiber.Handler, userClient manager.UserServiceClient, portfolioClient manager.PortfolioServiceClient, validator protovalidate.Validator) {
 
 	portfolioUserCall := calls.PortfolioUserCalls(userClient, validator)
 	portfolioCall := calls.PortfolioCalls(portfolioClient, validator)
 
-	userApi := router.Group("/user")
+	userApi := router.Group("/user", requireHost, authMiddleware)
 	{
 		userApi.Get("/details", middlewares.Validate[manager.SimpleRequest](validator), portfolioUserCall.GetUserDetails)
 		userApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.EditUserDetailsRequest](validator), portfolioUserCall.EditUserDetails)
 	}
 
-	messageApi := router.Group("/message")
+	messageApi := router.Group("/message", requireHost, authMiddleware)
 	{
 		messageApi.Get("/list", middlewares.RequireSession(), middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetMessages)
 		messageApi.Post("/add", middlewares.Validate[manager.AddMessageRequest](validator), portfolioCall.AddMessage)
 		messageApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteMessageRequest](validator), portfolioCall.DeleteMessage)
 	}
 
-	technologyApi := router.Group("/technology")
+	technologyApi := router.Group("/technology", requireHost, authMiddleware)
 	{
 		technologyApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetTechnologies)
 		technologyApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.TechnologyCreateRequest](validator), portfolioCall.CreateTechnology)
@@ -35,7 +35,7 @@ func managerRouter(router fiber.Router, userClient manager.UserServiceClient, po
 		technologyApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteTechnology)
 	}
 
-	projectApi := router.Group("/project")
+	projectApi := router.Group("/project", requireHost, authMiddleware)
 	{
 		projectApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetProjects)
 		projectApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ProjectCreateRequest](validator), portfolioCall.CreateProject)
@@ -43,11 +43,12 @@ func managerRouter(router fiber.Router, userClient manager.UserServiceClient, po
 		projectApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteProject)
 	}
 
-	experienceApi := router.Group("/experience")
+	experienceApi := router.Group("/experience", requireHost, authMiddleware)
 	{
 		experienceApi.Get("/list", middlewares.Validate[manager.SimpleRequest](validator), portfolioCall.GetExperiences)
 		experienceApi.Post("/add", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceCreateRequest](validator), portfolioCall.CreateExperience)
 		experienceApi.Post("/edit", middlewares.RequireSession(), middlewares.Validate[manager.ExperienceUpdateRequest](validator), portfolioCall.UpdateExperience)
 		experienceApi.Post("/delete", middlewares.RequireSession(), middlewares.Validate[manager.DeleteRequest](validator), portfolioCall.DeleteExperience)
 	}
+
 }
