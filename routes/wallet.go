@@ -2,6 +2,7 @@ package routes
 
 import (
 	calls "gateway/grpc/calls/wallet"
+	"gateway/grpc/clients"
 	"gateway/middlewares"
 
 	"buf.build/go/protovalidate"
@@ -9,24 +10,22 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func walletRouter(router fiber.Router, requireHost fiber.Handler, authMiddleware fiber.Handler, requireSession fiber.Handler, userClient wallet.UserServiceClient, financeClient wallet.FinanceServiceClient, validator protovalidate.Validator) {
-	walletUserCall := calls.WalletUserCalls(userClient, validator)
-	financeCall := calls.FinanceCalls(financeClient, validator)
+func walletRoutes(r fiber.Router, cl *clients.Clients, authenticate, access fiber.Handler, v protovalidate.Validator) {
+	user := calls.WalletUserCalls(cl.WalletUser)
+	finance := calls.FinanceCalls(cl.WalletFinance)
+	session := middlewares.RequireSession()
 
-	// User
-	router.Get("/user/summary", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.SimpleRequest](validator), walletUserCall.GetUserSummary)
+	r.Get("/user/summary", authenticate, access, session, middlewares.Validate[*wallet.SimpleRequest](v), user.GetUserSummary)
 
-	// Category
-	router.Get("/category/list", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.SimpleRequest](validator), financeCall.GetCategories)
-	router.Post("/category/add", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.CreateCategoryRequest](validator), financeCall.CreateCategory)
-	router.Post("/category/edit", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.UpdateCategoryRequest](validator), financeCall.UpdateCategory)
-	router.Post("/category/delete", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.DeleteRequest](validator), financeCall.DeleteCategory)
+	r.Get("/category/list", authenticate, access, session, middlewares.Validate[*wallet.SimpleRequest](v), finance.GetCategories)
+	r.Post("/category/add", authenticate, access, session, middlewares.Validate[*wallet.CreateCategoryRequest](v), finance.CreateCategory)
+	r.Post("/category/edit", authenticate, access, session, middlewares.Validate[*wallet.UpdateCategoryRequest](v), finance.UpdateCategory)
+	r.Post("/category/delete", authenticate, access, session, middlewares.Validate[*wallet.DeleteRequest](v), finance.DeleteCategory)
 
-	// Transaction
-	router.Query("/transaction/list", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.GetTransactionsRequest](validator), financeCall.GetTransactions)
-	router.Post("/transaction/add", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.CreateTransactionRequest](validator), financeCall.CreateTransaction)
-	router.Post("/transaction/edit", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.UpdateTransactionRequest](validator), financeCall.UpdateTransaction)
-	router.Post("/transaction/delete", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.DeleteRequest](validator), financeCall.DeleteTransaction)
-	router.Query("/transaction/export", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.ExportTransactionsRequest](validator), financeCall.ExportTransactions)
-	router.Query("/transaction/history", requireHost, authMiddleware, requireSession, middlewares.Validate[wallet.GetTransactionsUpdateHistoryRequest](validator), financeCall.GetTransactionsUpdateHistory)
+	r.Query("/transaction/list", authenticate, access, session, middlewares.Validate[*wallet.GetTransactionsRequest](v), finance.GetTransactions)
+	r.Post("/transaction/add", authenticate, access, session, middlewares.Validate[*wallet.CreateTransactionRequest](v), finance.CreateTransaction)
+	r.Post("/transaction/edit", authenticate, access, session, middlewares.Validate[*wallet.UpdateTransactionRequest](v), finance.UpdateTransaction)
+	r.Post("/transaction/delete", authenticate, access, session, middlewares.Validate[*wallet.DeleteRequest](v), finance.DeleteTransaction)
+	r.Query("/transaction/export", authenticate, access, session, middlewares.Validate[*wallet.ExportTransactionsRequest](v), finance.ExportTransactions)
+	r.Query("/transaction/history", authenticate, access, session, middlewares.Validate[*wallet.GetTransactionsUpdateHistoryRequest](v), finance.GetTransactionsUpdateHistory)
 }

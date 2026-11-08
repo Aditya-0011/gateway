@@ -15,7 +15,7 @@ The gateway service acts as the public-facing RESTful perimeter for the platform
 This section explains the technologies and physical layout of the gateway.
 
 - **Framework**: `github.com/gofiber/fiber/v3` for HTTP routing
-- **Middlewares**: Integrated payload compression, CORS, and rate limiting
+- **Middlewares**: CORS, security headers, rate limiting, authentication with an Origin check for cookie sessions, and request validation
 - **Storage**: Connects to Redis to back the sliding-window rate limiter
 - **gRPC clients**: Maintains persistent connections to internal services
 - **Logging**: Idiomatic structured logging via `log/slog`
@@ -27,7 +27,7 @@ This section explains the technologies and physical layout of the gateway.
 - `middlewares/`: Custom Fiber HTTP interceptors
 - `routes/`: HTTP route definitions mapping to internal clients
 - `schema/`: Data validation and structuring schemas
-- `utils/`: Helper utilities
+- `internal/`: Config loading and crypto helpers
 - `main.go`: Gateway entrypoint and middleware orchestration
 - `go.mod`: Dependency management
 
@@ -38,7 +38,8 @@ This section outlines the capabilities of the gateway.
 - **High-performance routing**: Exposes an HTTP API built on top of Fiber.
 - **Rate limiting**: Uses a sliding-window rate limiter backed by Redis.
 - **Security middlewares**: Uses strict CORS policies.
-- **Perimeter security**: Secures routes using cookie-based sessions (backed by Redis) for the admin console, and API key validation middleware for server-to-server communication (e.g., the Next.js frontend portfolio backend).
+- **Perimeter security**: Cookie sessions (backed by Redis, `__Secure-session` scoped to `API_DOMAIN`) for the UIs, and per-user API keys for portfolios. An `X-API-KEY` header always takes the key path and never falls back to the cookie. Keys only reach Manager's portfolio routes (`/user/details`, `/technology/list`, `/project/list`, `/experience/list`, `/message/add`, the last limited to 20 per hour per user); every other route requires a session.
+- **Two CORS lanes**: `CORS_ALLOWED_ORIGINS` (first-party UIs) get credentialed CORS. Any other origin is considered only on the portfolio routes of the Manager host, without credentials, if some key lists it (a Redis set rebuilt from the auth service); the request is then rejected unless the presented key lists that origin. A third-party page therefore never receives a cookie-backed response.
 - **Request validation**: Rejects malformed REST payloads early using custom middleware.
 - **gRPC proxying**: Translates REST payloads to internal gRPC contracts.
 - **Graceful shutdown**: Drains active HTTP requests and closes gRPC client connections upon OS interrupts.
@@ -47,7 +48,7 @@ This section outlines the capabilities of the gateway.
 
 The gateway implements a unified REST interface that orchestrates interactions for the platform:
 
-- **Auth routes**: Login, registration, and API key management endpoints
+- **Auth routes**: Login, logout, session check, password change, recovery codes, password reset, and API key management (`/key`, `/rotate-key`, `/key/revoke`, `/key/origins`)
 - **Portfolio routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies
 - **Wallet routes**: Endpoints for managing financial transactions and balances
 - **Public vs protected**: Segregates public read endpoints from secured write endpoints
@@ -68,13 +69,17 @@ Export these variables directly in your shell environment:
 
 | Variable | Description | Required |
 | :--- | :--- | :---: |
-| `REDIS_URL` | Connection string for Redis | **Yes** |
-| `DEVELOPMENT` | Set to `"true"` to enable looser defaults | No |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed origins | Yes (if not in dev) |
-| `PORT` | The port on which the HTTP gateway will listen (Default: `3000`) | No |
-| `AUTH_SERVICE_URL` | Internal gRPC address of the auth service | **Yes** |
-| `MANAGER_SERVICE_URL` | Internal gRPC address of the manager service | **Yes** |
-| `WALLET_SERVICE_URL` | Internal gRPC address of the wallet service | **Yes** |
+| `REDIS_URL` | Redis connection string (sessions, API key cache, rate limits) | **Yes** |
+| `DOMAIN` | Apex domain | **Yes** (except dev) |
+| `API_DOMAIN` | Parent of the API hosts, defaults to `api.<DOMAIN>`. Services are served on `<service>.<API_DOMAIN>` and the `__Secure-session` cookie is scoped to it, so UI and Portfolio hosts never receive it | No |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated `https://` origins of the UIs. Also the allowlist for the CSRF `Origin` check | **Yes** (except dev) |
+| `AUTH_SERVICE_ADDR` | `host:port` of the auth service | **Yes** |
+| `MANAGER_SERVICE_ADDR` | `host:port` of the manager service | **Yes** |
+| `WALLET_SERVICE_ADDR` | `host:port` of the wallet service | **Yes** |
+| `INTERNAL_AUTH_TOKEN` | Shared secret (32+ chars) sent to every service as a bearer token | **Yes** |
+| `INTERNAL_TLS_CA` | PEM CA bundle; enables TLS to the services when set | No |
+| `DEVELOPMENT` | `true` serves all routes on any host, relaxes cookie `Secure` and uses localhost CORS defaults | No |
+| `PORT` | HTTP port (default `3000`) | No |
 
 ### Running the service
 

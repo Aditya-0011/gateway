@@ -2,51 +2,70 @@ package calls
 
 import (
 	"context"
-	"gateway/internal/timeout"
+	"log/slog"
+	"time"
 
+	"gateway/internal/wire"
+
+	"github.com/Aditya-0011/common/contracts/go/grpcx"
 	"github.com/gofiber/fiber/v3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
-func Call[T any](c fiber.Ctx, action func(context.Context) (T, error)) (T, error) {
-	ctx, cancel := timeout.WithDeadline(c, timeout.Duration)
+const Timeout = 9500 * time.Millisecond
+
+func Call[T proto.Message](c fiber.Ctx, action func(context.Context) (T, error)) (T, error) {
+	ctx, cancel := context.WithTimeout(c.Context(), Timeout)
 	defer cancel()
 
 	res, err := action(ctx)
 	if err != nil {
 		var zero T
-		st, ok := status.FromError(err)
-		if ok {
-			switch st.Code() {
-			case codes.NotFound:
-				return zero, fiber.NewError(fiber.StatusNotFound, st.Message())
-			case codes.Unauthenticated:
-				return zero, fiber.NewError(fiber.StatusUnauthorized, st.Message())
-			case codes.InvalidArgument:
-				return zero, fiber.NewError(fiber.StatusBadRequest, st.Message())
-			case codes.AlreadyExists:
-				return zero, fiber.NewError(fiber.StatusConflict, st.Message())
-			case codes.PermissionDenied:
-				return zero, fiber.NewError(fiber.StatusForbidden, st.Message())
-			case codes.DeadlineExceeded:
-				return zero, fiber.NewError(fiber.StatusGatewayTimeout, st.Message())
-			case codes.FailedPrecondition:
-				return zero, fiber.NewError(fiber.StatusPreconditionFailed, st.Message())
-			default:
-				return zero, fiber.NewError(fiber.StatusInternalServerError, st.Message())
-			}
-		}
-		return zero, fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+		return zero, toHTTPError(c, err)
 	}
-
 	return res, nil
 }
 
-func CallWithJSON[T any](c fiber.Ctx, action func(context.Context) (T, error)) error {
+func CallWithJSON[T proto.Message](c fiber.Ctx, action func(context.Context) (T, error)) error {
 	res, err := Call(c, action)
 	if err != nil {
 		return err
 	}
-	return c.JSON(res)
+	return wire.Write(c, res)
+}
+
+func toHTTPError(c fiber.Ctx, err error) error {
+	st := status.Convert(err)
+	msg := st.Message()
+
+	switch st.Code() {
+	case codes.InvalidArgument, codes.OutOfRange:
+		return fiber.NewError(fiber.StatusBadRequest, msg)
+	case codes.Unauthenticated:
+		return fiber.NewError(fiber.StatusUnauthorized, msg)
+	case codes.NotFound:
+		return fiber.NewError(fiber.StatusNotFound, msg)
+	case codes.AlreadyExists, codes.Aborted:
+		return fiber.NewError(fiber.StatusConflict, msg)
+	case codes.FailedPrecondition:
+		return fiber.NewError(fiber.StatusPreconditionFailed, msg)
+	case codes.ResourceExhausted:
+		return fiber.NewError(fiber.StatusTooManyRequests, msg)
+	case codes.DeadlineExceeded:
+		return fiber.NewError(fiber.StatusGatewayTimeout, "Upstream timed out")
+	case codes.Unavailable, codes.Canceled:
+		return fiber.NewError(fiber.StatusServiceUnavailable, "Service unavailable")
+	case codes.PermissionDenied:
+		if grpcx.IsServiceCredentialsError(err) {
+			slog.LogAttrs(c.Context(), slog.LevelError, "upstream rejected gateway credentials", slog.String("error", msg))
+			return fiber.NewError(fiber.StatusBadGateway, "Bad gateway")
+		}
+		return fiber.NewError(fiber.StatusForbidden, msg)
+	default:
+		slog.LogAttrs(c.Context(), slog.LevelError, "upstream error",
+			slog.String("code", st.Code().String()), slog.String("error", msg))
+		return fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+	}
 }

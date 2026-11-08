@@ -4,20 +4,17 @@ import (
 	"context"
 	rpc "gateway/grpc/calls"
 
-	"buf.build/go/protovalidate"
 	"github.com/Aditya-0011/common/contracts/go/wallet"
 	"github.com/gofiber/fiber/v3"
 )
 
 type WalletUserCallsParams struct {
-	client    wallet.UserServiceClient
-	validator protovalidate.Validator
+	client wallet.UserServiceClient
 }
 
-func WalletUserCalls(client wallet.UserServiceClient, validator protovalidate.Validator) *WalletUserCallsParams {
+func WalletUserCalls(client wallet.UserServiceClient) *WalletUserCallsParams {
 	return &WalletUserCallsParams{
-		client:    client,
-		validator: validator,
+		client: client,
 	}
 }
 

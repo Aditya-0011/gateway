@@ -3,21 +3,19 @@ package calls
 import (
 	"context"
 	rpc "gateway/grpc/calls"
+	"mime"
 
-	"buf.build/go/protovalidate"
 	"github.com/Aditya-0011/common/contracts/go/wallet"
 	"github.com/gofiber/fiber/v3"
 )
 
 type FinanceCallsParams struct {
-	client    wallet.FinanceServiceClient
-	validator protovalidate.Validator
+	client wallet.FinanceServiceClient
 }
 
-func FinanceCalls(client wallet.FinanceServiceClient, validator protovalidate.Validator) *FinanceCallsParams {
+func FinanceCalls(client wallet.FinanceServiceClient) *FinanceCallsParams {
 	return &FinanceCallsParams{
-		client:    client,
-		validator: validator,
+		client: client,
 	}
 }
 
@@ -95,9 +93,9 @@ func (w *FinanceCallsParams) ExportTransactions(c fiber.Ctx) error {
 		return err
 	}
 
-	c.Set("Content-Disposition", "attachment; filename="+res.FileName)
-	c.Set("Content-Type", res.ContentType)
-	return c.Send(res.FileData)
+	c.Set(fiber.HeaderContentDisposition, mime.FormatMediaType("attachment", map[string]string{"filename": res.GetFileName()}))
+	c.Set(fiber.HeaderContentType, res.GetContentType())
+	return c.Send(res.GetFileData())
 }
 
 func (w *FinanceCallsParams) GetTransactionsUpdateHistory(c fiber.Ctx) error {

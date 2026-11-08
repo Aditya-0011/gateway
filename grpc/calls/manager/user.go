@@ -4,20 +4,17 @@ import (
 	"context"
 	rpc "gateway/grpc/calls"
 
-	"buf.build/go/protovalidate"
 	"github.com/Aditya-0011/common/contracts/go/manager"
 	"github.com/gofiber/fiber/v3"
 )
 
 type PortfolioUserCallsParams struct {
-	client    manager.UserServiceClient
-	validator protovalidate.Validator
+	client manager.UserServiceClient
 }
 
-func PortfolioUserCalls(client manager.UserServiceClient, validator protovalidate.Validator) *PortfolioUserCallsParams {
+func PortfolioUserCalls(client manager.UserServiceClient) *PortfolioUserCallsParams {
 	return &PortfolioUserCallsParams{
-		client:    client,
-		validator: validator,
+		client: client,
 	}
 }
 
