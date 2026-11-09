@@ -49,9 +49,9 @@ This section outlines the capabilities of the gateway.
 The gateway implements a unified REST interface that orchestrates interactions for the platform:
 
 - **Auth routes**: Login, first login, logout, session check and revocation, password change, recovery codes, password reset, admin user and project management (`/admin/*`), and API key management (`/key`, `/rotate-key`, `/key/revoke`, `/key/origins`)
-- **Portfolio routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies
+- **Portfolio routes**: Endpoints for managing user profiles, experiences, projects, messages, and technologies, plus the chatbot's free model list (`/chat/models`) and visitor limit check (`/chat/allow`)
 - **Wallet routes**: Endpoints for managing financial transactions and balances
-- **API key vs session**: The five portfolio routes accept an API key or a session; everything else requires a session, except login and password reset
+- **API key vs session**: The six portfolio routes accept an API key or a session; everything else requires a session, except login and password reset
 
 ## Getting started
 
