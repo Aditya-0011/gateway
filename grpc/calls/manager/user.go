@@ -26,6 +26,14 @@ func (p *PortfolioUserCallsParams) GetUserDetails(c fiber.Ctx) error {
 	})
 }
 
+func (p *PortfolioUserCallsParams) GetChatModels(c fiber.Ctx) error {
+	req := c.Locals("req").(*manager.SimpleRequest)
+
+	return rpc.CallWithJSON(c, func(ctx context.Context) (*manager.GetChatModelsResponse, error) {
+		return p.client.GetChatModels(ctx, req)
+	})
+}
+
 func (p *PortfolioUserCallsParams) EditUserDetails(c fiber.Ctx) error {
 	req := c.Locals("req").(*manager.EditUserDetailsRequest)
 

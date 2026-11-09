@@ -36,7 +36,7 @@ This section explains the technologies and physical layout of the gateway.
 This section outlines the capabilities of the gateway.
 
 - **High-performance routing**: Exposes an HTTP API built on top of Fiber.
-- **Rate limiting**: Uses a sliding-window rate limiter backed by Redis.
+- **Rate limiting**: Uses a sliding-window rate limiter backed by Redis. `POST /chat/allow` lets the Portfolio check its chat limits: 30 questions per visitor IP and 300 per key owner, each per hour.
 - **Security middlewares**: Uses strict CORS policies.
 - **Perimeter security**: Cookie sessions (backed by Redis, `__Secure-session` scoped to `API_DOMAIN`) for the UIs, and per-user API keys for portfolios. An `X-API-KEY` header always takes the key path and never falls back to the cookie. Keys only reach Manager's portfolio routes (`/user/details`, `/technology/list`, `/project/list`, `/experience/list`, `/message/add`, the last limited to 20 per hour per user); every other route requires a session. Ending a session deletes `session:{u<id>}:authz` only when it was the user's last live session, so other devices keep it.
 - **Two CORS lanes**: `CORS_ALLOWED_ORIGINS` (first-party UIs) get credentialed CORS. Any other origin is considered only on the portfolio routes of the Manager host, without credentials, if some key lists it (per-key origins live in the database and are cached in the Redis set `cors:key-origins`, rebuilt from the auth service); the request is then rejected unless the presented key lists that origin. A third-party page therefore never receives a cookie-backed response.
