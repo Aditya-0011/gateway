@@ -65,6 +65,17 @@ var (
 	deleteSessionScript = driver.NewScript(`
 		redis.call("DEL", KEYS[1])
 		redis.call("SREM", KEYS[2], ARGV[1])
+		local live = false
+		for _, sid in ipairs(redis.call("SMEMBERS", KEYS[2])) do
+			if redis.call("EXISTS", ARGV[2] .. sid) == 1 then
+				live = true
+			else
+				redis.call("SREM", KEYS[2], sid)
+			end
+		end
+		if not live then
+			redis.call("DEL", KEYS[3])
+		end
 		return 1
 	`)
 
@@ -270,7 +281,9 @@ func (s *Store) DeleteSession(ctx context.Context, userID int, sid string) error
 	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	defer cancel()
 
-	return deleteSessionScript.Run(ctx, s.client, []string{sessionKey(userID, sid), indexKey(userID)}, sid).Err()
+	return deleteSessionScript.Run(ctx, s.client,
+		[]string{sessionKey(userID, sid), indexKey(userID), authzKey(userID)}, sid, userTag(userID),
+	).Err()
 }
 
 func (s *Store) DeleteOtherSessions(ctx context.Context, userID int, keepSID string) error {

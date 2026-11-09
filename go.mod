@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	buf.build/go/protovalidate v1.4.0
-	github.com/Aditya-0011/common/contracts/go v0.0.0-20261108073255-2f15c42d2a3c
+	github.com/Aditya-0011/common/contracts/go v0.0.0-20261109073434-50be442ba7b6
 	github.com/bytedance/sonic v1.15.5
 	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/redis/go-redis/v9 v9.23.0
