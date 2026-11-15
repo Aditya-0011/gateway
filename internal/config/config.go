@@ -17,6 +17,7 @@ var devOrigins = []string{
 
 type Config struct {
 	Dev            bool
+	BindAddr       string
 	Port           string
 	Domain         string
 	APIDomain      string
@@ -33,11 +34,15 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		Dev:      os.Getenv("DEVELOPMENT") == "true",
+		BindAddr: os.Getenv("BIND_ADDR"),
 		Port:     envOr("PORT", "3000"),
 		Domain:   strings.TrimPrefix(strings.TrimSpace(os.Getenv("DOMAIN")), "."),
 		RedisURL: os.Getenv("REDIS_URL"),
 	}
 
+	if cfg.BindAddr == "" && !cfg.Dev {
+		cfg.BindAddr = "127.0.0.1"
+	}
 	if cfg.RedisURL == "" {
 		errs = append(errs, errors.New("REDIS_URL is not set"))
 	}
@@ -68,13 +73,14 @@ func Load() (Config, error) {
 		errs = append(errs, err)
 	}
 	ca := os.Getenv("INTERNAL_TLS_CA")
+	serverName := os.Getenv("INTERNAL_TLS_SERVER_NAME")
 
 	service := func(env string) grpcx.ClientConfig {
 		addr := os.Getenv(env)
 		if addr == "" {
 			errs = append(errs, fmt.Errorf("%s is not set", env))
 		}
-		return grpcx.ClientConfig{Addr: addr, AuthToken: token, TLSCAFile: ca}
+		return grpcx.ClientConfig{Addr: addr, AuthToken: token, TLSCAFile: ca, TLSServerName: serverName}
 	}
 	cfg.AuthService = service("AUTH_SERVICE_ADDR")
 	cfg.ManagerService = service("MANAGER_SERVICE_ADDR")

@@ -34,6 +34,7 @@ func Connect(ctx context.Context, uri string) (*Store, error) {
 	opt.DialTimeout = 2 * time.Second
 	opt.ReadTimeout = opTimeout
 	opt.WriteTimeout = opTimeout
+	opt.ContextTimeoutEnabled = true
 	opt.MaintNotificationsConfig = &maintnotifications.Config{Mode: maintnotifications.ModeDisabled}
 
 	client := driver.NewClient(opt)
@@ -46,6 +47,10 @@ func Connect(ctx context.Context, uri string) (*Store, error) {
 	}
 
 	return &Store{client: client}, nil
+}
+
+func (s *Store) Ping(ctx context.Context) error {
+	return s.client.Ping(ctx).Err()
 }
 
 func (s *Store) Close() error {

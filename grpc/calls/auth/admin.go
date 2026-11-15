@@ -48,7 +48,7 @@ func (h *Handlers) SetUserStatus(c fiber.Ctx) error {
 	}
 	target := int(req.GetTargetUserId())
 	if req.GetStatus() == auth.UserStatus_USER_STATUS_DISABLED {
-		h.warn(c, "revoking sessions of disabled user", h.store.DeleteAllSessions(c.Context(), target))
+		h.warn(c, "revoking sessions of disabled user", h.store.RevokeUser(c.Context(), target))
 	} else {
 		h.warn(c, "invalidating identity", h.store.InvalidateIdentity(c.Context(), target))
 	}
@@ -77,7 +77,7 @@ func (h *Handlers) DeleteUser(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	h.warn(c, "revoking sessions of deleted user", h.store.DeleteAllSessions(c.Context(), int(req.GetTargetUserId())))
+	h.warn(c, "revoking sessions of deleted user", h.store.RevokeUser(c.Context(), int(req.GetTargetUserId())))
 	return wire.Write(c, res)
 }
 

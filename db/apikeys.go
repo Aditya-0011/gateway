@@ -61,6 +61,7 @@ func (s *Store) CacheAPIKey(ctx context.Context, keyHash string, identity schema
 	pipe.Set(ctx, apiKeyPrefix+keyHash, data, apiKeyCacheTTL)
 	pipe.Set(ctx, apiKeyPointer(identity.UserID), keyHash, apiKeyCacheTTL)
 	pipe.SAdd(ctx, authzUsersKey, identity.UserID)
+	pipe.Expire(ctx, authzUsersKey, authzUsersTTL)
 	_, err = pipe.Exec(ctx)
 	return err
 }
@@ -90,9 +91,14 @@ func (s *Store) CacheKeyOrigins(ctx context.Context, origins []string) error {
 	ctx, cancel := context.WithTimeout(ctx, opTimeout)
 	defer cancel()
 
+	members := make([]any, 0, len(origins)+1)
+	members = append(members, keyOriginsSentinel)
+	for _, origin := range origins {
+		members = append(members, origin)
+	}
 	_, err := s.client.TxPipelined(ctx, func(pipe driver.Pipeliner) error {
 		pipe.Del(ctx, keyOriginsKey)
-		pipe.SAdd(ctx, keyOriginsKey, keyOriginsSentinel, origins)
+		pipe.SAdd(ctx, keyOriginsKey, members...)
 		pipe.Expire(ctx, keyOriginsKey, keyOriginsTTL)
 		return nil
 	})

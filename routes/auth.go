@@ -40,8 +40,8 @@ func authRoutes(r fiber.Router, store *db.Store, cl *clients.Clients, cookie mid
 	user := chain{authn.Required(), middlewares.RequireSession()}
 	admin := user.then(middlewares.RequireAdmin())
 
-	post(r, "/login", limited.then(middlewares.Validate[*auth.LoginRequest](v), h.Login))
-	post(r, "/reset-password", limited.then(middlewares.Validate[*auth.ResetPasswordRequest](v), h.ResetPassword))
+	post(r, "/login", limited.then(middlewares.Validate[*auth.LoginRequest](v), accountLimiter[*auth.LoginRequest](store), h.Login))
+	post(r, "/reset-password", limited.then(middlewares.Validate[*auth.ResetPasswordRequest](v), accountLimiter[*auth.ResetPasswordRequest](store), h.ResetPassword))
 
 	get(r, "/session", pending.then(h.Session))
 	post(r, "/logout", pending.then(h.Logout))

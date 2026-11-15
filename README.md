@@ -15,8 +15,8 @@ The gateway service acts as the public-facing RESTful perimeter for the platform
 This section explains the technologies and physical layout of the gateway.
 
 - **Framework**: `github.com/gofiber/fiber/v3` for HTTP routing
-- **Middlewares**: CORS, security headers, rate limiting, authentication with an Origin check for cookie sessions, and request validation
-- **Storage**: Connects to Redis for cookie sessions (`session:{u<id>}:<sid>`, 15-minute idle timeout, 12-hour maximum lifetime), cached identities (`session:{u<id>}:authz`, 10 minutes), cached API keys (`apikey:<hash>`, 5 minutes), API key origins (`cors:key-origins`, 5 minutes), and the sliding-window rate limiter (`ratelimit:*`)
+- **Middlewares**: panic recovery, CORS, security headers, rate limiting, authentication with an Origin check for cookie sessions, and request validation
+- **Storage**: Connects to Redis for cookie sessions (`session:{u<id>}:<sid>`, 15-minute idle timeout, 12-hour maximum lifetime), cached identities (`session:{u<id>}:authz`, 10 minutes), cached API keys (`apikey:<hash>`, 5 minutes), the set of users with cached entries (`authz:users`, 15 minutes, refreshed on every write), API key origins (`cors:key-origins`, 5 minutes), and the sliding-window rate limiter (`ratelimit:*`)
 - **gRPC clients**: Maintains persistent connections to internal services
 - **Logging**: Idiomatic structured logging via `log/slog`
 
@@ -36,12 +36,20 @@ This section explains the technologies and physical layout of the gateway.
 This section outlines the capabilities of the gateway.
 
 - **High-performance routing**: Exposes an HTTP API built on top of Fiber.
-- **Rate limiting**: Uses a sliding-window rate limiter backed by Redis. `POST /chat/allow` lets the Portfolio check its chat limits: 30 questions per visitor IP and 300 per key owner, each per hour.
+- **Rate limiting**: Uses a sliding-window rate limiter backed by Redis.
+  - Session and anonymous requests: 60 per minute per client IP.
+  - API-key requests skip the IP bucket and count against their key owner instead: 600 per minute. A key that is not cached yet costs an auth-service lookup, so lookups are also capped at 30 per minute per client IP.
+  - `/login` and `/reset-password`: 5 per minute per IP, plus 10 per 15 minutes per account (keyed by the SHA-256 of the lower-cased email). Other credential routes keep the per-IP limit.
+  - `POST /message/add`: 5 per hour per visitor and 100 per hour per key owner.
+  - `POST /chat/allow` lets the Portfolio check its chat limits: 30 questions per visitor and 300 per key owner, each per hour.
+  - The visitor is the client IP (IPv6 grouped by /64). A portfolio server can pass the real visitor in `X-Visitor-IP`, but the gateway honours it only for a server-only key (one with no origins) on a request without an `Origin` header.
 - **Security middlewares**: Uses strict CORS policies.
-- **Perimeter security**: Cookie sessions (backed by Redis, `__Secure-session` scoped to `API_DOMAIN`) for the UIs, and per-user API keys for portfolios. An `X-API-KEY` header always takes the key path and never falls back to the cookie. Keys only reach Manager's portfolio routes (`/user/details`, `/technology/list`, `/project/list`, `/experience/list`, `/message/add`, the last limited to 20 per hour per user); every other route requires a session. Ending a session deletes `session:{u<id>}:authz` only when it was the user's last live session, so other devices keep it.
+- **Perimeter security**: Cookie sessions (backed by Redis, `__Secure-session` scoped to `API_DOMAIN`) for the UIs, and per-user API keys for portfolios. An `X-API-KEY` header always takes the key path and never falls back to the cookie. Keys only reach Manager's portfolio routes (`/user/details`, `/technology/list`, `/project/list`, `/experience/list`, `/message/add` and `/chat/allow`); every other route requires a session. Disabling or deleting a user also drops their cached API key, so the key stops working at once. Ending a session deletes `session:{u<id>}:authz` only when it was the user's last live session, so other devices keep it.
 - **Two CORS lanes**: `CORS_ALLOWED_ORIGINS` (first-party UIs) get credentialed CORS. Any other origin is considered only on the portfolio routes of the Manager host, without credentials, if some key lists it (per-key origins live in the database and are cached in the Redis set `cors:key-origins`, rebuilt from the auth service); the request is then rejected unless the presented key lists that origin. A third-party page therefore never receives a cookie-backed response.
 - **Request validation**: Rejects malformed REST payloads early using custom middleware.
 - **gRPC proxying**: Translates REST payloads to internal gRPC contracts.
+- **Health check**: `GET /healthz` returns `200` when Redis answers a ping within one second, otherwise `503`. It answers only the exact path `/healthz` (other spellings such as `/healthz/` or `/HEALTHZ` get the normal 404), skips logging and rate limiting, and HAProxy blocks it from the internet.
+- **Panic recovery**: A handler panic is logged with its stack trace and answered with `500`; the process keeps running.
 - **Graceful shutdown**: Drains active HTTP requests and closes gRPC client connections upon OS interrupts.
 
 ## API summary
@@ -77,8 +85,10 @@ Export these variables directly in your shell environment:
 | `MANAGER_SERVICE_ADDR` | `host:port` of the manager service | **Yes** |
 | `WALLET_SERVICE_ADDR` | `host:port` of the wallet service | **Yes** |
 | `INTERNAL_AUTH_TOKEN` | Shared secret (32+ chars) sent to every service as a bearer token | **Yes** |
-| `INTERNAL_TLS_CA` | PEM CA bundle; enables TLS to the services when set | No |
+| `INTERNAL_TLS_CA` | PEM CA bundle; enables TLS to the services when set. The service certificates must then match the host in `*_SERVICE_ADDR`: with `<APP_IP>:<port>` they need `APP_IP` as an IP SAN, or set `INTERNAL_TLS_SERVER_NAME` | No |
+| `INTERNAL_TLS_SERVER_NAME` | Name to verify the service certificates against instead of the address host (for example a DNS SAN shared by all services) | No |
 | `DEVELOPMENT` | `true` serves all routes on any host, relaxes cookie `Secure` and uses localhost CORS defaults | No |
+| `BIND_ADDR` | Address to listen on. Defaults to `127.0.0.1` in production (HAProxy runs on the same host) and to all interfaces in development | No |
 | `PORT` | HTTP port (default `3000`) | No |
 
 ### Running the service

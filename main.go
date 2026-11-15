@@ -19,6 +19,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
+	recoverer "github.com/gofiber/fiber/v3/middleware/recover"
 )
 
 const (
@@ -64,6 +65,15 @@ func run() error {
 
 	app := fiber.New(fiberConfig(cfg))
 
+	app.Use(recoverer.New(recoverer.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c fiber.Ctx, r any) {
+			slog.LogAttrs(c.Context(), slog.LevelError, "recovered panic",
+				slog.Any("panic", r), slog.String("path", c.Path()), slog.String("stack", string(debug.Stack())))
+		},
+		PanicHandler: func(fiber.Ctx, any) error { return fiber.ErrInternalServerError },
+	}))
+	app.Get("/healthz", routes.Health(store))
 	app.Use(middlewares.Logger())
 	app.Use(middlewares.SecurityHeaders())
 	app.Use(routes.CORS(cfg, store, serviceClients.Auth))
@@ -78,9 +88,9 @@ func run() error {
 
 	listenErr := make(chan error, 1)
 	go func() {
-		listenErr <- app.Listen(net.JoinHostPort("", cfg.Port), fiber.ListenConfig{DisableStartupMessage: true})
+		listenErr <- app.Listen(net.JoinHostPort(cfg.BindAddr, cfg.Port), fiber.ListenConfig{DisableStartupMessage: true})
 	}()
-	slog.Info("gateway listening", slog.String("port", cfg.Port))
+	slog.Info("gateway listening", slog.String("addr", cfg.BindAddr), slog.String("port", cfg.Port))
 
 	select {
 	case <-ctx.Done():
@@ -111,7 +121,7 @@ func fiberConfig(cfg config.Config) fiber.Config {
 		fc.ProxyHeader = fiber.HeaderXForwardedFor
 		fc.TrustProxy = true
 		fc.EnableIPValidation = true
-		fc.TrustProxyConfig = fiber.TrustProxyConfig{Loopback: true, Private: true}
+		fc.TrustProxyConfig = fiber.TrustProxyConfig{Loopback: true}
 	}
 	return fc
 }

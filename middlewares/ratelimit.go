@@ -17,29 +17,38 @@ type RateLimit struct {
 	Window  time.Duration
 	Message string
 	By      func(fiber.Ctx) string
+	Skip    func(fiber.Ctx) bool
 }
 
 func (r RateLimit) Handler(store *db.Store) fiber.Handler {
-	limit := strconv.Itoa(r.Limit)
-
 	return func(c fiber.Ctx) error {
+		if r.Skip != nil && r.Skip(c) {
+			return c.Next()
+		}
 		subject := c.IP()
 		if r.By != nil {
 			subject = r.By(c)
 		}
-		res, err := store.Allow(c.Context(), r.Name+":"+subject, r.Limit, r.Window)
-		if err != nil {
-			slog.LogAttrs(c.Context(), slog.LevelError, "rate limiter unavailable", slog.Any("error", err))
-			return fiber.NewError(fiber.StatusServiceUnavailable, "Service unavailable")
-		}
-
-		c.Set("X-RateLimit-Limit", limit)
-		c.Set("X-RateLimit-Remaining", strconv.Itoa(res.Remaining))
-
-		if !res.Allowed {
-			c.Set(fiber.HeaderRetryAfter, strconv.Itoa(int(math.Ceil(res.RetryAfter.Seconds()))))
-			return fiber.NewError(fiber.StatusTooManyRequests, r.Message)
+		if err := r.Check(c, store, subject); err != nil {
+			return err
 		}
 		return c.Next()
 	}
+}
+
+func (r RateLimit) Check(c fiber.Ctx, store *db.Store, subject string) error {
+	res, err := store.Allow(c.Context(), r.Name+":"+subject, r.Limit, r.Window)
+	if err != nil {
+		slog.LogAttrs(c.Context(), slog.LevelError, "rate limiter unavailable", slog.Any("error", err))
+		return fiber.NewError(fiber.StatusServiceUnavailable, "Service unavailable")
+	}
+
+	c.Set("X-RateLimit-Limit", strconv.Itoa(r.Limit))
+	c.Set("X-RateLimit-Remaining", strconv.Itoa(res.Remaining))
+
+	if !res.Allowed {
+		c.Set(fiber.HeaderRetryAfter, strconv.Itoa(int(math.Ceil(res.RetryAfter.Seconds()))))
+		return fiber.NewError(fiber.StatusTooManyRequests, r.Message)
+	}
+	return nil
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strconv"
+	"time"
 
 	"gateway/db"
 	"gateway/internal/crypto"
@@ -16,6 +18,21 @@ import (
 )
 
 const APIKeyHeader = "X-API-KEY"
+
+var (
+	apiKeyOwnerLimit = RateLimit{
+		Name:    "key",
+		Limit:   600,
+		Window:  time.Minute,
+		Message: "Too many requests",
+	}
+	apiKeyLookupLimit = RateLimit{
+		Name:    "key-lookup",
+		Limit:   30,
+		Window:  time.Minute,
+		Message: "Too many requests",
+	}
+)
 
 type Authenticator struct {
 	store   *db.Store
@@ -89,7 +106,7 @@ func (a *Authenticator) refreshIdentity(c fiber.Ctx, userID int) (*schema.Identi
 	if err != nil {
 		switch status.Code(err) {
 		case codes.NotFound, codes.Unauthenticated:
-			if err := a.store.DeleteAllSessions(c.Context(), userID); err != nil {
+			if err := a.store.RevokeUser(c.Context(), userID); err != nil {
 				slog.LogAttrs(c.Context(), slog.LevelError, "revoking sessions of removed user", slog.Any("error", err))
 			}
 			a.cookie.Clear(c)
@@ -113,6 +130,9 @@ func (a *Authenticator) apiKey(c fiber.Ctx, key string) error {
 	identity, err := a.store.GetAPIKey(c.Context(), hash)
 	switch {
 	case errors.Is(err, db.ErrInvalidSession):
+		if err := apiKeyLookupLimit.Check(c, a.store, c.IP()); err != nil {
+			return err
+		}
 		identity, err = a.validateKey(c, key, hash)
 		if err != nil {
 			return err
@@ -126,7 +146,11 @@ func (a *Authenticator) apiKey(c fiber.Ctx, key string) error {
 		return fiber.NewError(fiber.StatusForbidden, "Origin not allowed for this API key")
 	}
 
-	c.Locals("auth", &schema.AuthInfo{Identity: identity.Identity, APIKey: true})
+	if err := apiKeyOwnerLimit.Check(c, a.store, strconv.Itoa(identity.UserID)); err != nil {
+		return err
+	}
+
+	c.Locals("auth", &schema.AuthInfo{Identity: identity.Identity, APIKey: true, KeyOrigins: identity.Origins})
 	return c.Next()
 }
 

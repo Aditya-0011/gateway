@@ -41,11 +41,14 @@ type APIKeyIdentity struct {
 
 type AuthInfo struct {
 	Identity
-	SessionID string
-	APIKey    bool
+	SessionID  string
+	APIKey     bool
+	KeyOrigins []string
 }
 
 func (a *AuthInfo) IsSession() bool { return a.SessionID != "" }
+
+func (a *AuthInfo) IsServerKey() bool { return a.APIKey && len(a.KeyOrigins) == 0 }
 
 type SessionResponse struct {
 	Identity

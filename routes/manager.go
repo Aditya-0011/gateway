@@ -29,6 +29,10 @@ var portfolioPaths = []string{
 }
 
 func visitorSubject(c fiber.Ctx) string {
+	info, ok := c.Locals("auth").(*schema.AuthInfo)
+	if !ok || !info.IsServerKey() || c.Get(fiber.HeaderOrigin) != "" {
+		return c.IP()
+	}
 	addr, err := netip.ParseAddr(c.Get(visitorIPHeader))
 	if err != nil {
 		return c.IP()
@@ -40,20 +44,29 @@ func visitorSubject(c fiber.Ctx) string {
 	return addr.String()
 }
 
+func ownerSubject(c fiber.Ctx) string {
+	return "user:" + strconv.Itoa(c.Locals("auth").(*schema.AuthInfo).UserID)
+}
+
 func managerRoutes(r fiber.Router, store *db.Store, cl *clients.Clients, authenticate, access fiber.Handler, v protovalidate.Validator) {
 	user := calls.PortfolioUserCalls(cl.ManagerUser)
 	portfolio := calls.PortfolioCalls(cl.ManagerPortfolio)
 
 	public := chain{authenticate, access}
 	owner := public.then(middlewares.RequireSession())
-	messageLimit := middlewares.RateLimit{
-		Name:    "message",
-		Limit:   20,
+	messageVisitorLimit := middlewares.RateLimit{
+		Name:    "message-visitor",
+		Limit:   5,
 		Window:  time.Hour,
 		Message: "Too many messages, try again later",
-		By: func(c fiber.Ctx) string {
-			return "user:" + strconv.Itoa(c.Locals("auth").(*schema.AuthInfo).UserID)
-		},
+		By:      visitorSubject,
+	}.Handler(store)
+	messageOwnerLimit := middlewares.RateLimit{
+		Name:    "message",
+		Limit:   100,
+		Window:  time.Hour,
+		Message: "Too many messages, try again later",
+		By:      ownerSubject,
 	}.Handler(store)
 	chatVisitorLimit := middlewares.RateLimit{
 		Name:    "chat",
@@ -67,9 +80,7 @@ func managerRoutes(r fiber.Router, store *db.Store, cl *clients.Clients, authent
 		Limit:   300,
 		Window:  time.Hour,
 		Message: "The chat is busy, try again later",
-		By: func(c fiber.Ctx) string {
-			return "user:" + strconv.Itoa(c.Locals("auth").(*schema.AuthInfo).UserID)
-		},
+		By:      ownerSubject,
 	}.Handler(store)
 
 	get(r, "/user/details", public.then(middlewares.Validate[*manager.SimpleRequest](v), user.GetUserDetails))
@@ -81,7 +92,7 @@ func managerRoutes(r fiber.Router, store *db.Store, cl *clients.Clients, authent
 	}))
 
 	get(r, "/message/list", owner.then(middlewares.Validate[*manager.SimpleRequest](v), portfolio.GetMessages))
-	post(r, "/message/add", public.then(messageLimit, middlewares.Validate[*manager.AddMessageRequest](v), portfolio.AddMessage))
+	post(r, "/message/add", public.then(messageVisitorLimit, messageOwnerLimit, middlewares.Validate[*manager.AddMessageRequest](v), portfolio.AddMessage))
 	post(r, "/message/delete", owner.then(middlewares.Validate[*manager.DeleteMessageRequest](v), portfolio.DeleteMessage))
 
 	get(r, "/technology/list", public.then(middlewares.Validate[*manager.SimpleRequest](v), portfolio.GetTechnologies))

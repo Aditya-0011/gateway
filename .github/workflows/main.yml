@@ -57,6 +57,7 @@ jobs:
           host: ${{ secrets.VM_IP }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_KEY }}
+          fingerprint: ${{ secrets.VM_SSH_FINGERPRINT }}
           port: 22
           version: "1.8.5"
           envs: GHCR_TOKEN,GHCR_USER,DEPLOY_IMAGE

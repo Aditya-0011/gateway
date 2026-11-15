@@ -3,6 +3,7 @@ package calls
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"gateway/internal/wire"
@@ -52,6 +53,10 @@ func toHTTPError(c fiber.Ctx, err error) error {
 	case codes.FailedPrecondition:
 		return fiber.NewError(fiber.StatusPreconditionFailed, msg)
 	case codes.ResourceExhausted:
+		if strings.Contains(msg, "larger than max") {
+			slog.LogAttrs(c.Context(), slog.LevelError, "upstream message too large", slog.String("error", msg))
+			return fiber.NewError(fiber.StatusBadGateway, "Response too large")
+		}
 		return fiber.NewError(fiber.StatusTooManyRequests, msg)
 	case codes.DeadlineExceeded:
 		return fiber.NewError(fiber.StatusGatewayTimeout, "Upstream timed out")

@@ -19,6 +19,7 @@ const (
 	SessionMaxLifetime = 12 * time.Hour
 	authzTTL           = 10 * time.Minute
 	authzUsersKey      = "authz:users"
+	authzUsersTTL      = 15 * time.Minute
 	userAgentMaxLen    = 200
 )
 
@@ -194,6 +195,7 @@ func (s *Store) CacheIdentity(ctx context.Context, identity schema.Identity) err
 	pipe := s.client.Pipeline()
 	pipe.Set(ctx, authzKey(identity.UserID), data, authzTTL)
 	pipe.SAdd(ctx, authzUsersKey, identity.UserID)
+	pipe.Expire(ctx, authzUsersKey, authzUsersTTL)
 	_, err = pipe.Exec(ctx)
 	return err
 }
@@ -292,6 +294,10 @@ func (s *Store) DeleteOtherSessions(ctx context.Context, userID int, keepSID str
 
 func (s *Store) DeleteAllSessions(ctx context.Context, userID int) error {
 	return s.deleteSessions(ctx, userID, "")
+}
+
+func (s *Store) RevokeUser(ctx context.Context, userID int) error {
+	return errors.Join(s.deleteSessions(ctx, userID, ""), s.InvalidateIdentity(ctx, userID))
 }
 
 func (s *Store) deleteSessions(ctx context.Context, userID int, keepSID string) error {
